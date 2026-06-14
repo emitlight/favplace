@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_in_Chrome__list_connected_browsers",
+      "mcp__Claude_in_Chrome__switch_browser",
+      "WebSearch",
+      "PowerShell($f = \"C:\\\\Users\\\\hayoung\\\\Downloads\\\\naver_capture.json\"; if \\(Test-Path $f\\) { $i = Get-Item $f; \"EXISTS\"; \"SizeKB: \" + [math]::Round\\($i.Length/1KB,1\\); \"Modified: \" + $i.LastWriteTime } else { \"NOT FOUND in Downloads\" })",
+      "PowerShell(& python \"C:\\\\Users\\\\hayoung\\\\Desktop\\\\���̹��������ã������\\\\analyze.py\")",
+      "mcp__visualize__read_me",
+      "mcp__visualize__show_widget",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "app",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "C:\\Users\\hayoung\\Desktop\\네이버지도즐겨찾기정리\\app"],
+      "port": 8765
+    }
+  ]
+}

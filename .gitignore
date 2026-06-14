@@ -1,0 +1,22 @@
+# 원본/중간 산출물 (대용량·개인정보 원본, Action이 재생성)
+naver_capture.json
+naver_bookmarks_full.json
+enriched.jsonl
+enrich_progress.txt
+site_data.json
+embed.js
+
+# 개발용 스크립트/아티팩트
+probe*.py
+gen_*.py
+propose.py
+analyze.py
+1_capture.js
+2_export.js
+__pycache__/
+.DS_Store
+Thumbs.db
+
+# 비밀값
+.dev.vars
+.env
