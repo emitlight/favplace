@@ -13,10 +13,11 @@ git push -u origin main
 ```
 > gh CLI가 있으면: `gh repo create hayoung-map --private --source=. --push`
 
-## 2. Cloudflare Pages (호스팅)
-1. Cloudflare 대시보드 → Workers & Pages → Create → Pages → Connect to Git → 저장소 선택
-2. 빌드 설정: Framework=None, Build command=(비움), **Build output directory = `app`**
-3. Deploy → `https://hayoung-map.pages.dev` 같은 주소 생성
+## 2. Cloudflare Pages (호스팅 + AI 함수)
+1. Cloudflare 대시보드 → Workers & Pages → Create → Pages → Connect to Git → `emitlight/favplace` 선택
+2. 빌드 설정: Framework preset=None, Build command=(비움), **Root directory(고급) = `app`**, Build output directory = `/`(기본값)
+   → 정적 사이트(`app/*`)와 AI 함수(`app/functions/recommend.js` → `/recommend`)가 함께 배포됨
+3. Deploy → `https://favplace.pages.dev` 같은 주소 생성
 
 ## 3. 비밀번호 접근제어 (Cloudflare Access — 무료)
 Zero Trust → Access → Applications → Add → Self-hosted
@@ -24,16 +25,13 @@ Zero Trust → Access → Applications → Add → Self-hosted
 - 정책: 본인 이메일만 허용(One-time PIN) → 링크 열면 이메일 인증 후 입장
 > 이러면 URL을 알아도 인증 없이는 못 봅니다(집 주소 등 보호).
 
-## 4. AI 추천 (Gemini Worker)
+## 4. AI 추천 (Gemini, Pages Function)
+AI는 사이트에 함께 배포되는 `app/functions/recommend.js`가 처리(별도 배포 불필요). 클라이언트는 `/recommend` 호출.
 1. https://aistudio.google.com → Get API key (무료)
-2. ```powershell
-   cd worker
-   npx wrangler login
-   npx wrangler secret put GEMINI_KEY   # 키 붙여넣기
-   npx wrangler deploy
-   ```
-3. 나온 `https://hayoung-map-ai.<계정>.workers.dev` 를 `app/js/config.js` 의 `AI_ENDPOINT` 에 입력 → commit/push
-> 비워두면 기기 내 휴리스틱 추천으로 동작(키 없이도 OK).
+2. Cloudflare Pages 프로젝트 → Settings → **Environment variables** → Production에 추가:
+   - 이름 `GEMINI_KEY`, 값 = 발급한 키, **Encrypt** 체크
+3. Deployments → 최신 배포 **Retry deployment**(또는 새 push)로 키 반영
+> 키 미설정 시 기기 내 휴리스틱 추천으로 자동 폴백(키 없이도 동작).
 
 ## 5. 매일 새벽 자동 갱신 (GitHub Actions)
 1. 네이버 쿠키 추출: 로그인된 map.naver.com → F12 → Console:

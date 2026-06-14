@@ -4,8 +4,8 @@ window.CONFIG = {
   // 변경: 원하는 비밀번호 문자열로. 숫자 4자리 권장.
   PASS: "1234",
 
-  // AI 추천 코스 엔드포인트 (Cloudflare Worker). 비워두면 기기 내 휴리스틱 추천 사용.
-  AI_ENDPOINT: "",
+  // AI 추천 엔드포인트 (Cloudflare Pages Function /recommend). 키 미설정/미배포 시 자동 휴리스틱 폴백.
+  AI_ENDPOINT: "/recommend",
 
   // 지도 타일 (무료, 키 불필요 / 한글 라벨)
   TILE_LIGHT: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
