@@ -13,7 +13,7 @@ const LITE = /[?&]lite\b/.test(location.search);
 const LITE_SRC = 'data:image/svg+xml;charset=utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%224%22 height=%223%22%3E%3C/svg%3E';
 const picSrc = u => LITE ? LITE_SRC : u;
 
-let PLACES = [], META = {}, map, clusterGroup, activeCat = null, searchQ = '', listLimit = 60;
+let PLACES = [], META = {}, map, clusterGroup, selLayer, activeCat = null, searchQ = '', listLimit = 60;
 
 /* ---------- 비밀번호 게이트 ---------- */
 function initGate() {
@@ -48,6 +48,15 @@ function initMap() {
   L.tileLayer(dark ? C.TILE_DARK : C.TILE_LIGHT, { attribution: C.TILE_ATTR, subdomains: 'abcd', maxZoom: 19, detectRetina: true }).addTo(map);
   clusterGroup = L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false, iconCreateFunction: clusterIcon });
   map.addLayer(clusterGroup);
+  selLayer = L.layerGroup().addTo(map);
+}
+function highlight(p) {
+  if (!selLayer) return;
+  selLayer.clearLayers();
+  L.marker([p.la, p.lo], {
+    zIndexOffset: 2000,
+    icon: L.divIcon({ html: `<div class="mk mk-sel" style="background:${catColor(p.c)}"></div>`, className: '', iconSize: [38, 38], iconAnchor: [19, 36] })
+  }).addTo(selLayer);
 }
 function clusterIcon(cluster) {
   const n = cluster.getChildCount();
@@ -122,6 +131,7 @@ function renderList() {
 /* ---------- 장소 상세 ---------- */
 function openDetail(p) {
   map.setView([p.la, p.lo], Math.max(map.getZoom(), 14), { animate: true });
+  highlight(p);
   const body = $('#sheet-body');
   const carousel = p.ph.length
     ? `<div class="carousel"><div class="carousel-track">${p.ph.map(u => `<img loading="lazy" src="${picSrc(u)}" alt="">`).join('')}</div><div class="carousel-count">${p.ph.length}장</div></div>`

@@ -218,3 +218,5 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .carousel-dots{position:absolute;left:0;right:0;bottom:12px;display:flex;gap:5px;justify-content:center;pointer-events:none}
 .carousel-dots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.5);transition:width .2s,background .2s}
 .carousel-dots i.on{background:#fff;width:16px;border-radius:3px}
+.mk-sel{width:34px;height:34px;border-width:3px;box-shadow:0 0 0 4px rgba(242,84,45,.28),0 4px 10px rgba(0,0,0,.4);animation:selpop .35s ease}
+@keyframes selpop{0%{transform:rotate(45deg) scale(.5)}60%{transform:rotate(45deg) scale(1.18)}100%{transform:rotate(45deg) scale(1)}}
