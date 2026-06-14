@@ -2,7 +2,7 @@
 import json, os, io, sys, re, time
 from collections import Counter
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-BASE = r"C:\Users\hayoung\Desktop\네이버지도즐겨찾기정리"
+BASE = os.path.dirname(os.path.abspath(__file__))
 APPDATA = os.path.join(BASE, "app", "data")
 os.makedirs(APPDATA, exist_ok=True)
 

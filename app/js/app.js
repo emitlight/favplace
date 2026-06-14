@@ -9,6 +9,9 @@ const catColor = k => (catMap[k] && catMap[k].color) || '#9A9890';
 const catLabel = k => (catMap[k] && (catMap[k].label || catMap[k].k)) || k;
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
 const fmtN = n => (n == null ? '' : Number(n).toLocaleString('ko-KR'));
+const LITE = /[?&]lite\b/.test(location.search);
+const LITE_SRC = 'data:image/svg+xml;charset=utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%224%22 height=%223%22%3E%3C/svg%3E';
+const picSrc = u => LITE ? LITE_SRC : u;
 
 let PLACES = [], META = {}, map, clusterGroup, activeCat = null, searchQ = '', listLimit = 60;
 
@@ -85,7 +88,8 @@ function makeChip(key, label, color) {
   const cnt = key === null ? PLACES.filter(p => p.map).length : catCount(key);
   const b = document.createElement('button');
   b.className = 'chip' + (activeCat === key ? ' on' : '');
-  b.innerHTML = (color ? `<span class="dot" style="background:${color}"></span>` : '') + esc(label) + ` <span class="cnt">${cnt}</span>`;
+  if (activeCat === key && color) { b.style.background = color; b.style.color = '#fff'; b.style.borderColor = color; }
+  b.innerHTML = (color ? `<span class="dot" style="background:${activeCat === key ? '#fff' : color}"></span>` : '') + esc(label) + ` <span class="cnt">${cnt}</span>`;
   b.onclick = () => { activeCat = key; listLimit = 60; renderChips(); renderMarkers(); renderList(); setSheet('half'); };
   return b;
 }
@@ -95,7 +99,7 @@ function sortPlaces(a, b) {
   return (b.en - a.en) || ((b.ph.length > 0) - (a.ph.length > 0)) || ((b.rv || 0) - (a.rv || 0));
 }
 function cardHTML(p) {
-  const thumb = p.ph[0] ? `<img class="thumb" loading="lazy" src="${p.ph[0]}" alt="">` : `<div class="thumb skeleton"></div>`;
+  const thumb = p.ph[0] ? `<img class="thumb" loading="lazy" src="${picSrc(p.ph[0])}" alt="">` : `<div class="thumb skeleton"></div>`;
   return `<div class="pcard">${thumb}<div class="meta">
     <div class="nm">${esc(p.n)}${p.x ? ' <span class="tag-closed">폐업</span>' : ''}</div>
     <div class="ct"><span class="dot" style="background:${catColor(p.c)}"></span>${esc(p.nc || catLabel(p.c))}${p.sc ? ` · <span class="score">★${p.sc}</span>` : ''}</div>
@@ -120,7 +124,7 @@ function openDetail(p) {
   map.setView([p.la, p.lo], Math.max(map.getZoom(), 14), { animate: true });
   const body = $('#sheet-body');
   const carousel = p.ph.length
-    ? `<div class="carousel"><div class="carousel-track">${p.ph.map(u => `<img loading="lazy" src="${u}" alt="">`).join('')}</div><div class="carousel-count">${p.ph.length}장</div></div>`
+    ? `<div class="carousel"><div class="carousel-track">${p.ph.map(u => `<img loading="lazy" src="${picSrc(u)}" alt="">`).join('')}</div><div class="carousel-count">${p.ph.length}장</div></div>`
     : `<div class="carousel"><div class="carousel-track"><div style="width:100%;display:flex;align-items:center;justify-content:center;color:var(--ink-3)">사진 준비중</div></div></div>`;
   const kw = (p.kw && p.kw.length) ? `<div class="kw-row">${p.kw.map(k => `<span class="kw">#${esc(k)}</span>`).join('')}</div>` : '';
   const menus = (p.mn && p.mn.length) ? `<div class="sec-title">대표 메뉴</div>` + p.mn.map(m => `<div class="menu-row"><span>${esc(m.n)}</span><span class="pr">${esc(m.p || '')}</span></div>`).join('') : '';
@@ -144,6 +148,17 @@ function openDetail(p) {
   setSheet('full');
   const nv = $('#d-naver'); if (nv) nv.onclick = () => window.open(`https://map.naver.com/p/entry/place/${p.id}`, '_blank');
   const sim = $('#d-sim'); if (sim) sim.onclick = () => openRecommend(`'${p.n}'(${p.rg})와 비슷한 분위기의 장소로 코스 짜줘`);
+  if (p.ph.length > 1) {
+    const track = $('.carousel-track', body), wrap = document.createElement('div');
+    wrap.className = 'carousel-dots';
+    const N = Math.min(p.ph.length, 10);
+    for (let i = 0; i < N; i++) { const d = document.createElement('i'); if (i === 0) d.className = 'on'; wrap.appendChild(d); }
+    $('.carousel', body).appendChild(wrap);
+    track.addEventListener('scroll', () => {
+      const idx = Math.min(Math.round(track.scrollLeft / track.clientWidth), N - 1);
+      $$('.carousel-dots i', body).forEach((d, i) => d.classList.toggle('on', i === idx));
+    });
+  }
 }
 
 /* ---------- 바텀시트 동작 ---------- */
@@ -151,6 +166,7 @@ const SORDER = ['peek', 'half', 'full']; let sIdx = 0;
 function setSheet(state) {
   sIdx = Math.max(0, SORDER.indexOf(state));
   const s = $('#sheet'); s.classList.remove('peek', 'half', 'full'); s.classList.add(state);
+  const fab = $('#fab'); if (fab) fab.style.display = (state === 'peek') ? 'flex' : 'none';
 }
 function initSheet() {
   setSheet('peek');
@@ -196,7 +212,7 @@ function renderGalleryChunk() {
     const idx = galleryShown + i;
     const d = document.createElement('div');
     d.className = 'gcard';
-    d.innerHTML = `<img loading="lazy" decoding="async" src="${p.ph[0]}" alt=""><div class="gname">${esc(p.n)}</div>`;
+    d.innerHTML = `<img loading="lazy" decoding="async" src="${picSrc(p.ph[0])}" alt=""><div class="gname">${esc(p.n)}</div>`;
     d.onclick = () => { $('#gallery').hidden = true; openDetail(galleryList[idx]); };
     frag.appendChild(d);
   });
@@ -236,23 +252,32 @@ async function runRecommend() {
   const q = $('#recommend-input').value.trim(); if (!q) return;
   const res = $('#recommend-result');
   res.innerHTML = '<div class="skeleton" style="height:90px;border-radius:14px"></div>';
-  let course;
+  let course = null;
   if (C.AI_ENDPOINT) {
     try {
-      course = await fetch(C.AI_ENDPOINT, {
+      const ranked = candidatesFor(q).ranked;
+      const cand = (ranked.length ? ranked : PLACES.filter(p => p.map && !p.x)).slice(0, 80).map(slim);
+      const data = await fetch(C.AI_ENDPOINT, {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ q, places: PLACES.filter(p => p.map && !p.x).map(slim) })
+        body: JSON.stringify({ q, candidates: cand })
       }).then(r => r.json());
-    } catch (e) { course = heuristicCourse(q); }
-  } else course = heuristicCourse(q);
+      if (data && Array.isArray(data.stops) && data.stops.length) {
+        const byId = {}; PLACES.forEach(p => byId[String(p.id)] = p);
+        const stops = data.stops.map(s => ({ p: byId[String(s.id)], why: s.why || '' })).filter(s => s.p);
+        if (stops.length) course = { note: data.note || 'AI 추천 코스', stops };
+      }
+    } catch (e) { /* 폴백 */ }
+  }
+  if (!course) course = heuristicCourse(q);
   renderCourse(course, res);
 }
 function slim(p) { return { id: p.id, n: p.n, c: p.c, nc: p.nc, rg: p.rg, kw: p.kw, sc: p.sc }; }
-function heuristicCourse(q) {
+function candidatesFor(q) {
   let pool = PLACES.filter(p => p.map && !p.x);
   const sidos = [...new Set(PLACES.map(p => p.sido).filter(Boolean))];
   const gus = [...new Set(PLACES.map(p => p.gu).filter(Boolean))];
-  const region = [...gus, ...sidos].find(r => r && q.includes(r));
+  const norm = r => r.replace(/(특별자치도|특별자치시|광역시|특별시|자치시|자치구|시|군|구|도)$/, '');
+  const region = [...gus, ...sidos].find(r => r && (q.includes(r) || (norm(r).length >= 2 && q.includes(norm(r)))));
   if (region) pool = pool.filter(p => p.rg.includes(region));
   const wants = [];
   const RULES = [
@@ -278,16 +303,20 @@ function heuristicCourse(q) {
     s += Math.min(1.5, (p.rv || 0) / 2000);
     return s;
   };
-  const ranked = pool.map(p => ({ p, s: score(p) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s);
+  const ranked = pool.map(p => ({ p, s: score(p) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s).map(x => x.p);
+  return { region, ranked };
+}
+function heuristicCourse(q) {
+  const { region, ranked } = candidatesFor(q);
   const pick = [], used = {};
-  for (const { p } of ranked) {
+  for (const p of ranked) {
     if (pick.length >= 4) break;
     if ((used[p.c] || 0) >= 2) continue;
     used[p.c] = (used[p.c] || 0) + 1; pick.push(p);
   }
   const orank = { 맛집: 0, 술집바: 1, 카페: 2, 문화여가: 3, 여행: 4, 쇼핑: 5, 숙박: 6 };
   pick.sort((a, b) => (orank[a.c] ?? 9) - (orank[b.c] ?? 9));
-  return { q, stops: pick, note: region ? `${region} 중심` : '전체에서 추천' };
+  return { note: region ? `${region} 중심 추천` : '전체에서 추천', stops: pick.map(p => ({ p, why: p.mc || '' })) };
 }
 function renderCourse(course, res) {
   if (!course || !course.stops || !course.stops.length) {
@@ -296,14 +325,14 @@ function renderCourse(course, res) {
   }
   const s = course.stops;
   res.innerHTML = `<div class="sec-title">추천 코스 · ${esc(course.note || '')}</div>` +
-    s.map((p, i) => `<div class="course-stop">
+    s.map((it, i) => { const p = it.p; return `<div class="course-stop">
       <div class="course-col"><div class="num">${i + 1}</div>${i < s.length - 1 ? '<div class="course-line"></div>' : ''}</div>
-      <div class="pcard" style="flex:1">${p.ph[0] ? `<img class="thumb" loading="lazy" src="${p.ph[0]}">` : '<div class="thumb skeleton"></div>'}
+      <div class="pcard" style="flex:1">${p.ph[0] ? `<img class="thumb" loading="lazy" src="${picSrc(p.ph[0])}">` : '<div class="thumb skeleton"></div>'}
         <div class="meta"><div class="nm">${esc(p.n)}</div>
         <div class="ct"><span class="dot" style="background:${catColor(p.c)}"></span>${esc(p.nc || catLabel(p.c))}</div>
-        <div class="rg">${esc(p.rg)}</div></div></div></div>`).join('');
-  $$('.pcard', res).forEach((el, i) => el.onclick = () => { $('#recommend').hidden = true; openDetail(s[i]); });
-  plotCourse(s);
+        <div class="mc">${esc(it.why || p.rg)}</div></div></div></div>`; }).join('');
+  $$('.pcard', res).forEach((el, i) => el.onclick = () => { $('#recommend').hidden = true; openDetail(s[i].p); });
+  plotCourse(s.map(it => it.p));
 }
 function plotCourse(stops) {
   if (window._courseLayer) map.removeLayer(window._courseLayer);

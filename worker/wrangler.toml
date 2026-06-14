@@ -1,0 +1,10 @@
+name = "hayoung-map-ai"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# 배포:
+#   cd worker
+#   npx wrangler login
+#   npx wrangler secret put GEMINI_KEY   # aistudio.google.com 에서 발급한 무료 키 붙여넣기
+#   npx wrangler deploy
+# 배포되면 https://hayoung-map-ai.<계정>.workers.dev 주소가 나옴 → app/js/config.js 의 AI_ENDPOINT 에 입력

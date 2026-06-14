@@ -2,7 +2,7 @@
 import urllib.request, urllib.error, json, sys, io, re, time, os, random
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-BASE = r"C:\Users\hayoung\Desktop\네이버지도즐겨찾기정리"
+BASE = os.path.dirname(os.path.abspath(__file__))
 OUT  = os.path.join(BASE, "enriched.jsonl")
 PROG = os.path.join(BASE, "enrich_progress.txt")
 LIMIT = int(sys.argv[1]) if len(sys.argv) > 1 else 0
