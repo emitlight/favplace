@@ -19,3 +19,7 @@ Thumbs.db
 # ë¹„ë°€ê°’
 .dev.vars
 .env
+
+# wrangler ºôµå Ä³½Ã/ÀÓ½Ã
+.wrangler/
+app/.wrangler/
