@@ -1,0 +1,29 @@
+{
+  "routes": [
+    {
+      "routePath": "/recommend",
+      "mountPath": "/",
+      "method": "OPTIONS",
+      "module": [
+        "recommend.js:onRequestOptions"
+      ]
+    },
+    {
+      "routePath": "/recommend",
+      "mountPath": "/",
+      "method": "POST",
+      "module": [
+        "recommend.js:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/",
+      "mountPath": "/",
+      "method": "",
+      "middleware": [
+        "_middleware.js:onRequest"
+      ]
+    }
+  ],
+  "baseURL": "/"
+}

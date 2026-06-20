@@ -376,4 +376,5 @@ function initNearby() {
 }
 
 document.addEventListener('DOMContentLoaded', initGate);
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
 })();
