@@ -13,7 +13,7 @@ const LITE = /[?&]lite\b/.test(location.search);
 const LITE_SRC = 'data:image/svg+xml;charset=utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%224%22 height=%223%22%3E%3C/svg%3E';
 const picSrc = u => LITE ? LITE_SRC : u;
 
-let PLACES = [], META = {}, map, clusterGroup, selLayer, activeCat = null, searchQ = '', listLimit = 60;
+let PLACES = [], META = {}, map, clusterGroup, selLayer, activeCat = null, searchQ = '', listLimit = 60, userLoc = null, sortMode = 'reco';
 
 /* ---------- 비밀번호 게이트 ---------- */
 function initGate() {
@@ -106,20 +106,24 @@ function cardHTML(p) {
   const thumb = p.ph[0] ? `<img class="thumb" loading="lazy" src="${picSrc(p.ph[0])}" alt="">` : `<div class="thumb skeleton"></div>`;
   return `<div class="pcard">${thumb}<div class="meta">
     <div class="nm">${esc(p.n)}${p.x ? ' <span class="tag-closed">폐업</span>' : ''}</div>
-    <div class="ct"><span class="dot" style="background:${catColor(p.c)}"></span>${esc(p.nc || catLabel(p.c))}${p.sc ? ` · <span class="score">★${p.sc}</span>` : ''}</div>
+    <div class="ct"><span class="dot" style="background:${catColor(p.c)}"></span>${esc(p.nc || catLabel(p.c))}${p.sc ? ` · <span class="score">★${p.sc}</span>` : ''}${userLoc ? ` · <span class="dist">${fmtDist(distTo(p))}</span>` : ''}</div>
     ${p.mc ? `<div class="mc">${esc(p.mc)}</div>` : `<div class="rg">${esc(p.rg)}</div>`}
   </div></div>`;
 }
+function distTo(p) { return userLoc ? haversine(userLoc.la, userLoc.lo, p.la, p.lo) : 0; }
 function renderList() {
   const body = $('#sheet-body');
-  const vis = visiblePlaces().slice().sort(sortPlaces);
+  const vis = visiblePlaces().slice();
+  vis.sort((userLoc && sortMode === 'near') ? (a, b) => distTo(a) - distTo(b) : sortPlaces);
   const shown = vis.slice(0, listLimit);
-  let html = `<div class="list-head"><b>${esc(activeCat ? catLabel(activeCat) : '전체')}</b><span>${vis.length}곳${searchQ ? ` · "${esc(searchQ)}"` : ''}</span></div>`;
+  const toggle = userLoc ? `<span class="sortrow"><button class="sortbtn${sortMode === 'near' ? ' on' : ''}" data-s="near">가까운 순</button><button class="sortbtn${sortMode === 'reco' ? ' on' : ''}" data-s="reco">추천 순</button></span>` : '';
+  let html = `<div class="list-head"><b>${esc(activeCat ? catLabel(activeCat) : '전체')}</b><span>${vis.length}곳${searchQ ? ` · "${esc(searchQ)}"` : ''}</span>${toggle}</div>`;
   html += shown.map(cardHTML).join('<div class="divider"></div>');
   if (vis.length > listLimit) html += `<button id="more" class="act" style="margin-top:14px">더 보기 (${vis.length - listLimit}곳)</button>`;
   if (!vis.length) html += `<p style="color:var(--ink-2);text-align:center;padding:30px 0">표시할 장소가 없어요.</p>`;
   body.innerHTML = html; body.scrollTop = 0;
   $$('.pcard', body).forEach((el, i) => el.onclick = () => openDetail(shown[i]));
+  $$('.sortbtn', body).forEach(b => b.onclick = () => { sortMode = b.dataset.s; listLimit = 60; renderList(); });
   const more = $('#more', body); if (more) more.onclick = () => { listLimit += 60; renderList(); };
 }
 
@@ -364,6 +368,7 @@ function initNearby() {
   if (!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition(pos => {
     const { latitude: la, longitude: lo } = pos.coords;
+    userLoc = { la, lo }; sortMode = 'near'; renderList();
     const cand = PLACES.filter(p => p.map && !p.x).map(p => ({ p, d: haversine(la, lo, p.la, p.lo) })).sort((a, b) => a.d - b.d);
     const near = cand.find(c => c.p.ph.length && c.d < 30000) || (cand[0] && cand[0].d < 30000 ? cand[0] : null);
     if (near) {
