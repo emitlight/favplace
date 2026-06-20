@@ -6,10 +6,22 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 APPDATA = os.path.join(BASE, "app", "data")
 os.makedirs(APPDATA, exist_ok=True)
 
-GROUP = {"DINING":"맛집","CAFE":"카페","BAR":"술집바","ACCOMMODATION":"숙박","TRAVEL":"여행",
- "SHOPPING":"쇼핑","LIFE_CULTURE":"문화여가","ENTERTAINMENT":"문화여가","EDUCATION":"교육",
- "CAR":"자동차","SUPERMARKET":"생활","PUBLIC":"생활","GENERAL":"생활","ETC":"생활",
- "GEO_INFO":"생활","ADDRESS":"생활","TRANSPORTATION":"생활"}
+_MCIDFALL = {"DINING":"한식","CAFE":"카페","BAR":"술집바","ACCOMMODATION":"숙박여행","TRAVEL":"숙박여행",
+ "SHOPPING":"생활","LIFE_CULTURE":"문화여가","ENTERTAINMENT":"문화여가","EDUCATION":"생활","CAR":"생활"}
+def theme(nc, mcid):
+    s = nc or ""
+    def has(*ws): return any(w in s for w in ws)
+    if has("아파트","오피스텔","주상복합","빌라","빌딩","부동산","중개","분양","사택","주택"): return "주거"
+    if has("카페","디저트","베이커리","브런치","빵","도넛","아이스크림","빙수","떡카페","케이크","제과","차,"): return "카페"
+    if has("요리주점","술집","와인","이자카야","포차","호프","펍","칵테일","위스키","바,라운지","맥주"): return "술집바"
+    if has("일식","일본","스시","초밥","생선회","물회","사시미","라멘","라면","돈카츠","우동","오마카세","덮밥","해산물","수산"): return "일식"
+    if has("중식","중국","마라","딤섬","양꼬치"): return "중식"
+    if has("고기","삼겹","갈비","곱창","막창","대창","육류","구이","스테이크","바베큐","닭갈비","족발","보쌈","한우","오리","장어"): return "고기"
+    if has("양식","이탈리","파스타","스파게티","피자","햄버거","버거","멕시","타코","브라질","아시안","베트남","쌀국수","태국","인도"): return "양식"
+    if has("한식","한정식","국밥","백반","찌개","냉면","칼국수","만두","김밥","분식","떡볶이","치킨","닭","백숙","삼계탕","곰탕","설렁탕","순대","해장국","쌈밥","두부","죽","국수","수제비","비빔밥","감자탕","찜","탕","뷔페","식당"): return "한식"
+    if has("호텔","펜션","리조트","모텔","글램핑","캠핑","숙박","게스트","관광","명소","해수욕장","해변","유원지","온천","민속마을","케이블카","전망"): return "숙박여행"
+    if has("미술관","갤러리","전시","공연","박물관","공원","수목원","체험","공방","도서관","영화","수영장","스포츠","골프","스파","장소대여","시장","마을","관람","서점","책방","문화","아트"): return "문화여가"
+    return _MCIDFALL.get(mcid, "생활")
 SIDO = {"서울특별시":"서울","경기도":"경기","대전광역시":"대전","부산광역시":"부산","강원도":"강원",
  "강원특별자치도":"강원","경상남도":"경남","경상북도":"경북","충청남도":"충남","충청북도":"충북",
  "전라남도":"전남","전라북도":"전북","전북특별자치도":"전북","광주광역시":"광주","인천광역시":"인천",
@@ -67,8 +79,9 @@ for ent in data["my"]["bookmarkSync"]["bookmarks"]:
         "n": b.get("name"),
         "la": round(b.get("py") or 0, 5),
         "lo": round(b.get("px") or 0, 5),
-        "c": GROUP.get(b.get("mcid"), "생활"),
+        "c": theme((e.get("cat") if e else None) or b.get("mcidName"), b.get("mcid")),
         "nc": (e.get("cat") if e else None) or b.get("mcidName"),
+        "tel": (e.get("phone") if e else None),
         "rg": (sido + (" " + gu if gu else "")).strip(),
         "sido": sido, "gu": gu,
         "f": [fid2name.get(i, "") for i in [m.get("folderId") for m in (ent.get("folderMappings") or [])]],

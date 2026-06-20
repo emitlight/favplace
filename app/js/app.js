@@ -27,8 +27,8 @@ function initGate() {
 async function boot() {
   try {
     const [p, m] = await Promise.all([
-      fetch('./data/places.json').then(r => r.json()),
-      fetch('./data/meta.json').then(r => r.json()).catch(() => ({}))
+      fetch('./data/places.json', { cache: 'no-store' }).then(r => r.json()),
+      fetch('./data/meta.json', { cache: 'no-store' }).then(r => r.json()).catch(() => ({}))
     ]);
     PLACES = p; META = m || {};
   } catch (e) { console.error('데이터 로드 실패', e); PLACES = []; }
@@ -288,25 +288,28 @@ function candidatesFor(q) {
   const norm = r => r.replace(/(특별자치도|특별자치시|광역시|특별시|자치시|자치구|시|군|구|도)$/, '');
   const region = [...gus, ...sidos].find(r => r && (q.includes(r) || (norm(r).length >= 2 && q.includes(norm(r)))));
   if (region) pool = pool.filter(p => p.rg.includes(region));
+  const FOOD = ['한식', '고기', '일식', '중식', '양식'];
   const wants = [];
   const RULES = [
-    [/대게|회|해물|해산물|물회|조개|굴|랍스터/, '맛집', '바다'],
-    [/고기|구이|삼겹|갈비|한우|곱창|막창/, '맛집', null],
-    [/맛집|밥|먹|식당|점심|저녁|한식|일식|중식|양식/, '맛집', null],
-    [/카페|커피|디저트|빵|베이커리|브런치|케이크/, '카페', null],
-    [/술|바|와인|칵테일|포차|맥주|하이볼/, '술집바', null],
-    [/미술관|전시|박물관|문화|갤러리|공연|영화/, '문화여가', null],
+    [/대게|회|해물|해산물|물회|조개|굴|랍스터|초밥|스시|일식|돈카츠|라멘/, ['일식'], '바다'],
+    [/고기|구이|삼겹|갈비|한우|곱창|막창|스테이크|족발|보쌈|오리|장어/, ['고기'], null],
+    [/중식|짜장|짬뽕|마라|탕수|양꼬치|딤섬/, ['중식'], null],
+    [/파스타|피자|양식|이탈리|버거|햄버거|멕시|쌀국수|베트남|태국/, ['양식'], null],
+    [/한식|국밥|백반|찌개|냉면|칼국수|분식|떡볶이|김밥|치킨|한정식|찜|탕/, ['한식'], null],
+    [/맛집|밥|먹|식당|점심|저녁|식사|회식|배고/, FOOD, null],
+    [/카페|커피|디저트|빵|베이커리|케이크|브런치/, ['카페'], null],
+    [/술|바|와인|칵테일|포차|맥주|하이볼|이자카야|호프|위스키/, ['술집바'], null],
+    [/미술관|전시|박물관|문화|갤러리|공연|영화|공원|체험|서점|책방/, ['문화여가'], null],
     [/바다|오션|뷰|풍경|노을|호수/, null, '바다뷰'],
     [/룸|프라이빗|단체/, null, '룸'],
     [/늦게|늦은|밤|24시|새벽|마감/, null, '24시'],
-    [/산|관광|여행|명소|드라이브/, '여행', null],
-    [/쇼핑|아울렛|백화점/, '쇼핑', null]
+    [/숙박|호텔|펜션|글램핑|캠핑|산|관광|여행|명소|드라이브|온천|휴양/, ['숙박여행'], null]
   ];
-  RULES.forEach(([re, cat, kw]) => { if (re.test(q)) wants.push({ cat, kw }); });
-  if (!wants.length) { wants.push({ cat: '맛집', kw: null }, { cat: '카페', kw: null }); }
+  RULES.forEach(([re, cats, kw]) => { if (re.test(q)) wants.push({ cats, kw }); });
+  if (!wants.length) { wants.push({ cats: FOOD, kw: null }, { cats: ['카페'], kw: null }); }
   const score = p => {
     let s = 0;
-    wants.forEach(w => { if (w.cat && p.c === w.cat) s += 5; if (w.kw && p.kw.includes(w.kw)) s += 4; });
+    wants.forEach(w => { if (w.cats && w.cats.includes(p.c)) s += 5; if (w.kw && p.kw.includes(w.kw)) s += 4; });
     if (p.ph.length) s += 1.5;
     if (p.sc) s += Math.min(2, p.sc - 3);
     s += Math.min(1.5, (p.rv || 0) / 2000);
@@ -323,7 +326,7 @@ function heuristicCourse(q) {
     if ((used[p.c] || 0) >= 2) continue;
     used[p.c] = (used[p.c] || 0) + 1; pick.push(p);
   }
-  const orank = { 맛집: 0, 술집바: 1, 카페: 2, 문화여가: 3, 여행: 4, 쇼핑: 5, 숙박: 6 };
+  const orank = { 한식: 0, 고기: 0, 일식: 0, 중식: 0, 양식: 0, 술집바: 1, 카페: 2, 문화여가: 3, 숙박여행: 4, 생활: 5, 주거: 6 };
   pick.sort((a, b) => (orank[a.c] ?? 9) - (orank[b.c] ?? 9));
   return { note: region ? `${region} 중심 추천` : '전체에서 추천', stops: pick.map(p => ({ p, why: p.mc || '' })) };
 }

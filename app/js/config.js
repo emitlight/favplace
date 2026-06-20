@@ -17,15 +17,16 @@ window.CONFIG = {
 
   // 카테고리 정의 (순서/색)
   CATS: [
-    { k:"맛집",   color:"#E8590C", icon:"🍽" },
-    { k:"카페",   color:"#B07A3C", icon:"☕" },
-    { k:"술집바", color:"#7C6CE0", icon:"🍷", label:"술집·바" },
-    { k:"숙박",   color:"#2F87E0", icon:"🏨" },
-    { k:"여행",   color:"#18A07A", icon:"⛰", label:"여행·관광" },
-    { k:"쇼핑",   color:"#E0568A", icon:"🛍" },
-    { k:"문화여가", color:"#5FA021", icon:"🎭", label:"문화·여가" },
-    { k:"교육",   color:"#2B62D6", icon:"📚" },
-    { k:"자동차", color:"#6B6B6B", icon:"🚗" },
-    { k:"생활",   color:"#9A9890", icon:"📍", label:"생활·기타" }
+    { k:"한식",     label:"한식",        color:"#E8590C" },
+    { k:"고기",     label:"고기·구이",    color:"#C92A2A" },
+    { k:"일식",     label:"일식·회",      color:"#1098AD" },
+    { k:"중식",     label:"중식",        color:"#E67700" },
+    { k:"양식",     label:"양식·아시안",  color:"#9C36B5" },
+    { k:"카페",     label:"카페·디저트",  color:"#B07A3C" },
+    { k:"술집바",   label:"술집·바",      color:"#7048E8" },
+    { k:"숙박여행", label:"숙박·여행",    color:"#1971C2" },
+    { k:"문화여가", label:"문화·여가",    color:"#2F9E44" },
+    { k:"주거",     label:"주거·부동산",  color:"#495057" },
+    { k:"생활",     label:"생활·기타",    color:"#868E96" }
   ]
 };
