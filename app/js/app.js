@@ -17,15 +17,10 @@ let PLACES = [], META = {}, map, clusterGroup, selLayer, activeCat = null, searc
 
 /* ---------- 비밀번호 게이트 ---------- */
 function initGate() {
-  const gate = $('#gate'), form = $('#gate-form'), input = $('#gate-input'), err = $('#gate-err');
-  const enter = () => { gate.style.display = 'none'; $('#app').hidden = false; boot(); };
-  if (sessionStorage.getItem('hymap_ok') === '1') { enter(); return; }
-  form.addEventListener('submit', e => {
-    e.preventDefault();
-    if (input.value === String(C.PASS)) { sessionStorage.setItem('hymap_ok', '1'); enter(); }
-    else { err.hidden = false; input.value = ''; input.focus(); }
-  });
-  setTimeout(() => input.focus(), 200);
+  // 배포본은 Cloudflare 엣지 인증(_middleware Basic Auth)으로 보호되므로 클라이언트 게이트는 생략.
+  $('#gate').style.display = 'none';
+  $('#app').hidden = false;
+  boot();
 }
 
 /* ---------- 부트 ---------- */
