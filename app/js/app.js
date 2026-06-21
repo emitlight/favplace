@@ -33,7 +33,7 @@ async function boot() {
     PLACES = p; META = m || {};
   } catch (e) { console.error('데이터 로드 실패', e); PLACES = []; }
   initMap(); renderChips(); renderMarkers(); renderList();
-  initSheet(); initSearch(); initGallery(); initRecommend(); initNearby();
+  initSheet(); initSearch(); initGallery(); initRecommend(); initNearby(); initGuide();
 }
 
 /* ---------- 지도 ---------- */
@@ -150,12 +150,25 @@ function openDetail(p) {
     ${p.memo ? `<div class="sec-title">내 메모</div><div class="micro">${esc(p.memo)}</div>` : ''}
     ${menus}
     <div class="actions">
-      <button class="act primary" id="d-naver">네이버에서 열기</button>
-      <button class="act" id="d-sim">비슷한 곳</button>
+      <button class="act primary" id="d-naver">네이버</button>
+      <button class="act" id="d-dir">길찾기</button>
+      ${p.tel ? '<button class="act" id="d-tel">전화</button>' : ''}
+      <button class="act" id="d-share">공유</button>
     </div>
+    <button class="act" id="d-sim" style="width:100%;margin-top:8px;background:var(--surface-2)">✨ 이런 곳 더 추천받기</button>
   </div>`;
   setSheet('full');
-  const nv = $('#d-naver'); if (nv) nv.onclick = () => window.open(`https://map.naver.com/p/entry/place/${p.id}`, '_blank');
+  const pageUrl = `https://map.naver.com/p/entry/place/${p.id}`;
+  const nv = $('#d-naver'); if (nv) nv.onclick = () => window.open(pageUrl, '_blank');
+  const dir = $('#d-dir'); if (dir) dir.onclick = () => {
+    const t = Date.now();
+    location.href = `nmap://route/public?dlat=${p.la}&dlng=${p.lo}&dname=${encodeURIComponent(p.n)}&appname=favplace.pages.dev`;
+    setTimeout(() => { if (Date.now() - t < 1600) window.open(pageUrl, '_blank'); }, 1100);
+  };
+  const tel = $('#d-tel'); if (tel) tel.onclick = () => { location.href = 'tel:' + String(p.tel).replace(/[^0-9+]/g, ''); };
+  const sh = $('#d-share'); if (sh) sh.onclick = async () => {
+    try { if (navigator.share) await navigator.share({ title: p.n, text: `${p.n} · ${p.rg}`, url: pageUrl }); else { await navigator.clipboard.writeText(pageUrl); alert('링크를 복사했어요'); } } catch (e) {}
+  };
   const sim = $('#d-sim'); if (sim) sim.onclick = () => openRecommend(`'${p.n}'(${p.rg})와 비슷한 분위기의 장소로 코스 짜줘`);
   if (p.ph.length > 1) {
     const track = $('.carousel-track', body), wrap = document.createElement('div');
@@ -383,6 +396,37 @@ function initNearby() {
   }, () => {}, { timeout: 8000, maximumAge: 600000 });
 }
 
+function initGuide() {
+  const btn = $('#btn-info'); if (btn) btn.onclick = openGuide;
+  const cl = $('#guide-close'); if (cl) cl.onclick = () => { $('#guide').hidden = true; };
+}
+function openGuide() {
+  const total = META.total != null ? META.total : PLACES.length;
+  const withPhoto = META.withPhoto != null ? META.withPhoto : PLACES.filter(p => p.ph.length).length;
+  const closed = META.closed != null ? META.closed : PLACES.filter(p => p.x).length;
+  const catRows = C.CATS.map(c => { const n = catCount(c.k); return n ? `<div class="gcat"><span class="dot" style="background:${c.color}"></span>${esc(c.label || c.k)}<b>${n}</b></div>` : ''; }).join('');
+  const feats = [
+    ['지도', '핀 색이 곧 테마. 클러스터 숫자를 탭하면 펼쳐져요.'],
+    ['카테고리', '상단 칩으로 테마별 필터링.'],
+    ['검색', '이름·지역·메뉴로 검색(🔍).'],
+    ['갤러리', '사진으로 한눈에 둘러보기(▦).'],
+    ['AI 추천', '기분/상황을 적으면 코스를 만들어줘요.'],
+    ['내 위치', 'GPS 허용 시 가까운 순 정렬 + 근처 추천.'],
+    ['장소 상세', '사진·메뉴·평점 + 네이버·길찾기·전화·공유.']
+  ];
+  $('#guide-body').innerHTML =
+    `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:6px">
+      <div class="mcard"><div class="mlbl">전체 장소</div><div class="mval">${total}</div></div>
+      <div class="mcard"><div class="mlbl">사진 있는 곳</div><div class="mval">${withPhoto}</div></div>
+      <div class="mcard"><div class="mlbl">폐업 표시</div><div class="mval">${closed}</div></div>
+      <div class="mcard"><div class="mlbl">마지막 갱신</div><div class="mval" style="font-size:15px">${esc(META.updated || '-')}</div></div>
+    </div>
+    <p style="font-size:12px;color:var(--ink-3);margin:4px 0 16px">매일 새벽 2시, 네이버 즐겨찾기에서 자동으로 가져와 갱신돼요.</p>
+    <div class="sec-title">카테고리</div><div class="gcats">${catRows}</div>
+    <div class="sec-title" style="margin-top:16px">기능 안내</div>
+    ${feats.map(f => `<div class="gfeat"><b>${f[0]}</b><span>${f[1]}</span></div>`).join('')}`;
+  $('#guide').hidden = false;
+}
 document.addEventListener('DOMContentLoaded', initGate);
 if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
 })();
