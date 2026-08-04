@@ -17,16 +17,16 @@ window.CONFIG = {
 
   // 카테고리 정의 (순서/색)
   CATS: [
-    { k:"한식",     label:"한식",        color:"#E8590C" },
-    { k:"고기",     label:"고기·구이",    color:"#C92A2A" },
-    { k:"일식",     label:"일식·회",      color:"#1098AD" },
-    { k:"중식",     label:"중식",        color:"#E67700" },
-    { k:"양식",     label:"양식·아시안",  color:"#9C36B5" },
-    { k:"카페",     label:"카페·디저트",  color:"#B07A3C" },
-    { k:"술집바",   label:"술집·바",      color:"#7048E8" },
-    { k:"숙박여행", label:"숙박·여행",    color:"#1971C2" },
-    { k:"문화여가", label:"문화·여가",    color:"#2F9E44" },
-    { k:"주거",     label:"주거·부동산",  color:"#495057" },
-    { k:"생활",     label:"생활·기타",    color:"#868E96" }
+    { k:"음식점", label:"음식점",      color:"#E8590C" },
+    { k:"카페",   label:"카페",        color:"#B07A3C" },
+    { k:"술집바", label:"술집·바",     color:"#7048E8" },
+    { k:"문화",   label:"문화",        color:"#2F9E44" },
+    { k:"레저",   label:"레저",        color:"#0CA678" },
+    { k:"명소",   label:"명소",        color:"#E64980" },
+    { k:"자연",   label:"자연",        color:"#66A80F" },
+    { k:"숙박",   label:"숙박",        color:"#1971C2" },
+    { k:"쇼핑",   label:"쇼핑",        color:"#9C36B5" },
+    { k:"주거",   label:"주거·부동산",  color:"#495057" },
+    { k:"생활",   label:"생활",        color:"#868E96" }
   ]
 };

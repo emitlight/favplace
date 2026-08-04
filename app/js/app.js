@@ -13,7 +13,7 @@ const LITE = /[?&]lite\b/.test(location.search);
 const LITE_SRC = 'data:image/svg+xml;charset=utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%224%22 height=%223%22%3E%3C/svg%3E';
 const picSrc = u => LITE ? LITE_SRC : u;
 
-let PLACES = [], META = {}, map, clusterGroup, selLayer, activeCat = null, searchQ = '', listLimit = 60, userLoc = null, sortMode = 'reco';
+let PLACES = [], META = {}, map, clusterGroup, selLayer, activeCat = null, activeSub = null, activeRegion = null, searchQ = '', listLimit = 60, userLoc = null, sortMode = 'reco';
 
 /* ---------- 비밀번호 게이트 ---------- */
 function initGate() {
@@ -50,7 +50,7 @@ function highlight(p) {
   selLayer.clearLayers();
   L.marker([p.la, p.lo], {
     zIndexOffset: 2000,
-    icon: L.divIcon({ html: `<div class="mk mk-sel" style="background:${catColor(p.c)}"></div>`, className: '', iconSize: [38, 38], iconAnchor: [19, 36] })
+    icon: L.divIcon({ html: `<div class="mk mk-sel" style="background:${catColor(p.c1)}"></div>`, className: '', iconSize: [38, 38], iconAnchor: [19, 36] })
   }).addTo(selLayer);
 }
 function clusterIcon(cluster) {
@@ -60,7 +60,7 @@ function clusterIcon(cluster) {
 }
 function markerFor(p) {
   const m = L.marker([p.la, p.lo], {
-    icon: L.divIcon({ html: `<div class="mk" style="background:${catColor(p.c)}"></div>`, className: '', iconSize: [26, 26], iconAnchor: [13, 24] })
+    icon: L.divIcon({ html: `<div class="mk" style="background:${catColor(p.c1)}"></div>`, className: '', iconSize: [26, 26], iconAnchor: [13, 24] })
   });
   m.on('click', () => openDetail(p));
   return m;
@@ -73,7 +73,7 @@ function matchSearch(p) {
     (p.mn && p.mn.some(m => m.n && m.n.toLowerCase().includes(q)));
 }
 function visiblePlaces() {
-  return PLACES.filter(p => p.map && (!activeCat || p.c === activeCat) && matchSearch(p));
+  return PLACES.filter(p => p.map && (!activeCat || p.c1 === activeCat) && (!activeSub || p.c2 === activeSub) && matchSearch(p));
 }
 function renderMarkers() {
   if (!clusterGroup) return;
@@ -82,19 +82,40 @@ function renderMarkers() {
 }
 
 /* ---------- 카테고리 칩 ---------- */
-function catCount(k) { return PLACES.filter(p => p.c === k && p.map).length; }
+function catCount(k) { return PLACES.filter(p => p.c1 === k && p.map).length; }
+function subCount(k) { return PLACES.filter(p => p.c2 === k && p.map && (!activeCat || p.c1 === activeCat)).length; }
 function renderChips() {
   const el = $('#chips'); el.innerHTML = '';
-  el.appendChild(makeChip(null, '전체', null));
-  C.CATS.forEach(c => { if (catCount(c.k) > 0) el.appendChild(makeChip(c.k, c.label || c.k, c.color)); });
+  const row1 = document.createElement('div'); row1.className = 'chiprow';
+  row1.appendChild(makeChip(null, '전체', null));
+  C.CATS.forEach(c => { if (catCount(c.k) > 0) row1.appendChild(makeChip(c.k, c.label || c.k, c.color)); });
+  el.appendChild(row1);
+  if (activeCat && META.tree && META.tree[activeCat]) {
+    const subs = Object.keys(META.tree[activeCat]).sort((a, b) => META.tree[activeCat][b] - META.tree[activeCat][a]);
+    if (subs.length > 1) {
+      const row2 = document.createElement('div'); row2.className = 'chiprow subrow';
+      row2.appendChild(makeSubChip(null, '전체'));
+      subs.forEach(s => row2.appendChild(makeSubChip(s, s)));
+      el.appendChild(row2);
+    }
+  }
 }
 function makeChip(key, label, color) {
   const cnt = key === null ? PLACES.filter(p => p.map).length : catCount(key);
+  const on = activeCat === key;
   const b = document.createElement('button');
-  b.className = 'chip' + (activeCat === key ? ' on' : '');
-  if (activeCat === key && color) { b.style.background = color; b.style.color = '#fff'; b.style.borderColor = color; }
-  b.innerHTML = (color ? `<span class="dot" style="background:${activeCat === key ? '#fff' : color}"></span>` : '') + esc(label) + ` <span class="cnt">${cnt}</span>`;
-  b.onclick = () => { activeCat = key; listLimit = 60; renderChips(); renderMarkers(); renderList(); setSheet('half'); };
+  b.className = 'chip' + (on ? ' on' : '');
+  if (on && color) { b.style.background = color; b.style.color = '#fff'; b.style.borderColor = color; }
+  b.innerHTML = (color ? `<span class="dot" style="background:${on ? '#fff' : color}"></span>` : '') + esc(label) + ` <span class="cnt">${cnt}</span>`;
+  b.onclick = () => { activeCat = key; activeSub = null; listLimit = 60; renderChips(); renderMarkers(); renderList(); setSheet('half'); };
+  return b;
+}
+function makeSubChip(key, label) {
+  const on = activeSub === key;
+  const b = document.createElement('button');
+  b.className = 'chip subchip' + (on ? ' on' : '');
+  b.innerHTML = esc(label) + (key ? ` <span class="cnt">${subCount(key)}</span>` : '');
+  b.onclick = () => { activeSub = key; listLimit = 60; renderChips(); renderMarkers(); renderList(); };
   return b;
 }
 
@@ -106,7 +127,7 @@ function cardHTML(p) {
   const thumb = p.ph[0] ? `<img class="thumb" loading="lazy" src="${picSrc(p.ph[0])}" alt="">` : `<div class="thumb skeleton"></div>`;
   return `<div class="pcard">${thumb}<div class="meta">
     <div class="nm">${esc(p.n)}${p.x ? ' <span class="tag-closed">폐업</span>' : ''}</div>
-    <div class="ct"><span class="dot" style="background:${catColor(p.c)}"></span>${esc(p.nc || catLabel(p.c))}${p.sc ? ` · <span class="score">★${p.sc}</span>` : ''}${userLoc ? ` · <span class="dist">${fmtDist(distTo(p))}</span>` : ''}</div>
+    <div class="ct"><span class="dot" style="background:${catColor(p.c1)}"></span>${esc(p.nc || catLabel(p.c1))}${p.sc ? ` · <span class="score">★${p.sc}</span>` : ''}${userLoc ? ` · <span class="dist">${fmtDist(distTo(p))}</span>` : ''}</div>
     ${p.mc ? `<div class="mc">${esc(p.mc)}</div>` : `<div class="rg">${esc(p.rg)}</div>`}
   </div></div>`;
 }
@@ -141,7 +162,7 @@ function openDetail(p) {
     ${carousel}
     <h2>${esc(p.n)}${p.x ? ' <span class="tag-closed">폐업</span>' : ''}</h2>
     <div class="sub">
-      <span class="badge"><span class="dot" style="background:${catColor(p.c)}"></span>${esc(p.nc || catLabel(p.c))}</span>
+      <span class="badge"><span class="dot" style="background:${catColor(p.c1)}"></span>${esc(p.nc || catLabel(p.c1))}</span>
       ${p.sc ? `<span class="score">★ ${p.sc}</span>` : ''}${p.rv ? `<span>리뷰 ${fmtN(p.rv)}</span>` : ''}
     </div>
     <div class="sub"><span>📍 ${esc(p.rg)}</span>${(p.f && p.f.filter(Boolean).length) ? `<span>· 폴더: ${esc(p.f.filter(Boolean).join(', '))}</span>` : ''}</div>
@@ -293,7 +314,7 @@ async function runRecommend() {
   if (!course) course = heuristicCourse(q);
   renderCourse(course, res);
 }
-function slim(p) { return { id: p.id, n: p.n, c: p.c, nc: p.nc, rg: p.rg, kw: p.kw, sc: p.sc }; }
+function slim(p) { return { id: p.id, n: p.n, c1: p.c1, c2: p.c2, nc: p.nc, rg: p.rg, kw: p.kw, sc: p.sc }; }
 function candidatesFor(q) {
   let pool = PLACES.filter(p => p.map && !p.x);
   const sidos = [...new Set(PLACES.map(p => p.sido).filter(Boolean))];
@@ -301,28 +322,32 @@ function candidatesFor(q) {
   const norm = r => r.replace(/(특별자치도|특별자치시|광역시|특별시|자치시|자치구|시|군|구|도)$/, '');
   const region = [...gus, ...sidos].find(r => r && (q.includes(r) || (norm(r).length >= 2 && q.includes(norm(r)))));
   if (region) pool = pool.filter(p => p.rg.includes(region));
-  const FOOD = ['한식', '고기', '일식', '중식', '양식'];
+  const FOOD = ['음식점'];
   const wants = [];
   const RULES = [
-    [/대게|회|해물|해산물|물회|조개|굴|랍스터|초밥|스시|일식|돈카츠|라멘/, ['일식'], '바다'],
-    [/고기|구이|삼겹|갈비|한우|곱창|막창|스테이크|족발|보쌈|오리|장어/, ['고기'], null],
+    [/대게|회|해물|해산물|물회|초밥|스시|일식|돈카츠|라멘|사시미/, ['일식·회'], '바다'],
+    [/고기|구이|삼겹|갈비|한우|곱창|막창|스테이크|족발|보쌈|오리|장어/, ['고기·구이'], null],
     [/중식|짜장|짬뽕|마라|탕수|양꼬치|딤섬/, ['중식'], null],
-    [/파스타|피자|양식|이탈리|버거|햄버거|멕시|쌀국수|베트남|태국/, ['양식'], null],
-    [/한식|국밥|백반|찌개|냉면|칼국수|분식|떡볶이|김밥|치킨|한정식|찜|탕/, ['한식'], null],
+    [/파스타|피자|양식|이탈리|버거|햄버거|멕시|쌀국수|베트남|태국/, ['양식·아시안'], null],
+    [/한식|국밥|백반|찌개|냉면|칼국수|한정식|찜|탕|해장국/, ['한식'], null],
+    [/분식|떡볶이|김밥|순대|치킨|닭강정/, ['분식', '치킨'], null],
     [/맛집|밥|먹|식당|점심|저녁|식사|회식|배고/, FOOD, null],
-    [/카페|커피|디저트|빵|베이커리|케이크|브런치/, ['카페'], null],
+    [/카페|커피|디저트|빵|베이커리|케이크|브런치|베이글|소금빵|도넛/, ['카페'], null],
     [/술|바|와인|칵테일|포차|맥주|하이볼|이자카야|호프|위스키/, ['술집바'], null],
-    [/미술관|전시|박물관|문화|갤러리|공연|영화|공원|체험|서점|책방/, ['문화여가'], null],
-    [/바다|오션|뷰|풍경|노을|호수/, null, '바다뷰'],
+    [/미술관|전시|박물관|문화|갤러리|공연|영화|도서관|서점|책방|복합문화/, ['문화'], null],
+    [/골프|스포츠|수영|볼링|클라이밍|헬스|체험|공방/, ['레저'], null],
+    [/명소|관광|시장|전망|랜드마크|유적|고궁/, ['명소'], null],
+    [/바다|오션|해변|해수욕|산|숲|공원|자연|계곡|폭포|온천|노을|풍경|호수/, ['자연'], '바다뷰'],
     [/룸|프라이빗|단체/, null, '룸'],
     [/늦게|늦은|밤|24시|새벽|마감/, null, '24시'],
-    [/숙박|호텔|펜션|글램핑|캠핑|산|관광|여행|명소|드라이브|온천|휴양/, ['숙박여행'], null]
+    [/숙박|호텔|펜션|글램핑|캠핑|리조트|모텔/, ['숙박'], null],
+    [/쇼핑|아울렛|백화점|마트/, ['쇼핑'], null]
   ];
   RULES.forEach(([re, cats, kw]) => { if (re.test(q)) wants.push({ cats, kw }); });
   if (!wants.length) { wants.push({ cats: FOOD, kw: null }, { cats: ['카페'], kw: null }); }
   const score = p => {
     let s = 0;
-    wants.forEach(w => { if (w.cats && w.cats.includes(p.c)) s += 5; if (w.kw && p.kw.includes(w.kw)) s += 4; });
+    wants.forEach(w => { if (w.cats && (w.cats.includes(p.c1) || w.cats.includes(p.c2))) s += 5; if (w.kw && p.kw.includes(w.kw)) s += 4; });
     if (p.ph.length) s += 1.5;
     if (p.sc) s += Math.min(2, p.sc - 3);
     s += Math.min(1.5, (p.rv || 0) / 2000);
@@ -336,11 +361,11 @@ function heuristicCourse(q) {
   const pick = [], used = {};
   for (const p of ranked) {
     if (pick.length >= 4) break;
-    if ((used[p.c] || 0) >= 2) continue;
-    used[p.c] = (used[p.c] || 0) + 1; pick.push(p);
+    if ((used[p.c1] || 0) >= 2) continue;
+    used[p.c1] = (used[p.c1] || 0) + 1; pick.push(p);
   }
-  const orank = { 한식: 0, 고기: 0, 일식: 0, 중식: 0, 양식: 0, 술집바: 1, 카페: 2, 문화여가: 3, 숙박여행: 4, 생활: 5, 주거: 6 };
-  pick.sort((a, b) => (orank[a.c] ?? 9) - (orank[b.c] ?? 9));
+  const orank = { 음식점: 0, 술집바: 1, 카페: 2, 문화: 3, 명소: 4, 자연: 4, 레저: 4, 숙박: 5, 쇼핑: 6, 생활: 7, 주거: 8 };
+  pick.sort((a, b) => (orank[a.c1] ?? 9) - (orank[b.c1] ?? 9));
   return { note: region ? `${region} 중심 추천` : '전체에서 추천', stops: pick.map(p => ({ p, why: p.mc || '' })) };
 }
 function renderCourse(course, res) {
@@ -354,7 +379,7 @@ function renderCourse(course, res) {
       <div class="course-col"><div class="num">${i + 1}</div>${i < s.length - 1 ? '<div class="course-line"></div>' : ''}</div>
       <div class="pcard" style="flex:1">${p.ph[0] ? `<img class="thumb" loading="lazy" src="${picSrc(p.ph[0])}">` : '<div class="thumb skeleton"></div>'}
         <div class="meta"><div class="nm">${esc(p.n)}</div>
-        <div class="ct"><span class="dot" style="background:${catColor(p.c)}"></span>${esc(p.nc || catLabel(p.c))}</div>
+        <div class="ct"><span class="dot" style="background:${catColor(p.c1)}"></span>${esc(p.nc || catLabel(p.c1))}</div>
         <div class="mc">${esc(it.why || p.rg)}</div></div></div></div>`; }).join('');
   $$('.pcard', res).forEach((el, i) => el.onclick = () => { $('#recommend').hidden = true; openDetail(s[i].p); });
   plotCourse(s.map(it => it.p));
@@ -388,7 +413,7 @@ function initNearby() {
     const cand = PLACES.filter(p => p.map && !p.x).map(p => ({ p, d: haversine(la, lo, p.la, p.lo) })).sort((a, b) => a.d - b.d);
     const near = cand.find(c => c.p.ph.length && c.d < 30000) || (cand[0] && cand[0].d < 30000 ? cand[0] : null);
     if (near) {
-      $('#nearby-text').innerHTML = `근처 ${fmtDist(near.d)} · <b>${esc(near.p.n)}</b> · ${esc(near.p.nc || catLabel(near.p.c))}`;
+      $('#nearby-text').innerHTML = `근처 ${fmtDist(near.d)} · <b>${esc(near.p.n)}</b> · ${esc(near.p.nc || catLabel(near.p.c1))}`;
       const n = $('#nearby'); n.hidden = false;
       $('#nearby-close').onclick = ev => { ev.stopPropagation(); n.hidden = true; };
       $('#nearby-text').onclick = () => openDetail(near.p);
