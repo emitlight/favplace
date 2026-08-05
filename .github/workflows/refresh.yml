@@ -1,7 +1,8 @@
 name: 매일 즐겨찾기 갱신
 on:
-  schedule:
-    - cron: "0 17 * * *"   # UTC 17:00 = KST 02:00 (매일 새벽 2시)
+  # NAVER_COOKIE 시크릿 설정(Phase 3) 후 아래 스케줄 주석 해제 → 매일 새벽 2시 자동 갱신
+  # schedule:
+  #   - cron: "0 17 * * *"   # UTC 17:00 = KST 02:00
   workflow_dispatch: {}      # 수동 실행 버튼
 
 permissions:
