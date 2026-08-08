@@ -33,7 +33,7 @@ async function boot() {
     PLACES = p; META = m || {};
   } catch (e) { console.error('데이터 로드 실패', e); PLACES = []; }
   initMap(); renderChips(); renderMarkers(); renderList();
-  initSheet(); initSearch(); initGallery(); initRecommend(); initNearby(); initGuide();
+  initSheet(); initSearch(); initLocate(); initRegion(); initRecommend(); initNearby(); initGuide();
 }
 
 /* ---------- 지도 ---------- */
@@ -72,8 +72,15 @@ function matchSearch(p) {
     (p.nc && p.nc.includes(q)) || (p.mc && p.mc.includes(q)) ||
     (p.mn && p.mn.some(m => m.n && m.n.toLowerCase().includes(q)));
 }
+function matchRegion(p) {
+  if (!activeRegion) return true;
+  if (activeRegion.sido && p.sido !== activeRegion.sido) return false;
+  if (activeRegion.gu && p.gu !== activeRegion.gu) return false;
+  if (activeRegion.dong && p.dong !== activeRegion.dong) return false;
+  return true;
+}
 function visiblePlaces() {
-  return PLACES.filter(p => p.map && (!activeCat || p.c1 === activeCat) && (!activeSub || p.c2 === activeSub) && matchSearch(p));
+  return PLACES.filter(p => p.map && (!activeCat || p.c1 === activeCat) && (!activeSub || p.c2 === activeSub) && matchRegion(p) && matchSearch(p));
 }
 function renderMarkers() {
   if (!clusterGroup) return;
@@ -87,6 +94,7 @@ function subCount(k) { return PLACES.filter(p => p.c2 === k && p.map && (!active
 function renderChips() {
   const el = $('#chips'); el.innerHTML = '';
   const row1 = document.createElement('div'); row1.className = 'chiprow';
+  row1.appendChild(makeRegionChip());
   row1.appendChild(makeChip(null, '전체', null));
   C.CATS.forEach(c => { if (catCount(c.k) > 0) row1.appendChild(makeChip(c.k, c.label || c.k, c.color)); });
   el.appendChild(row1);
@@ -204,22 +212,70 @@ function openDetail(p) {
   }
 }
 
-/* ---------- 바텀시트 동작 ---------- */
+/* ---------- 바텀시트 동작 (실시간 드래그 + 스냅) ---------- */
 const SORDER = ['peek', 'half', 'full']; let sIdx = 0;
 function setSheet(state) {
   sIdx = Math.max(0, SORDER.indexOf(state));
-  const s = $('#sheet'); s.classList.remove('peek', 'half', 'full'); s.classList.add(state);
-  const fab = $('#fab'); if (fab) fab.style.display = (state === 'peek') ? 'flex' : 'none';
+  const s = $('#sheet'); if (!s) return;
+  s.style.transition = ''; s.style.transform = '';
+  s.classList.remove('peek', 'half', 'full'); s.classList.add(SORDER[sIdx]);
+  const fab = $('#fab'); if (fab) fab.style.display = (SORDER[sIdx] === 'peek') ? 'flex' : 'none';
 }
 function initSheet() {
   setSheet('peek');
-  const handle = $('#sheet-handle'); let sy = 0;
+  const sheet = $('#sheet'), handle = $('#sheet-handle'), body = $('#sheet-body');
+  const safeTop = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-top')) || 0;
+  const winH = () => window.innerHeight;
+  const pos = () => ({ peek: sheet.offsetHeight - 116, half: 0.38 * winH(), full: Math.max(0.06 * winH(), safeTop()) });
+  let pending = false, dragging = false, fromBody = false, startX = 0, startY = 0, baseTY = 0, lastY = 0, lastT = 0, vel = 0;
   const go = i => setSheet(SORDER[Math.max(0, Math.min(2, i))]);
-  handle.addEventListener('pointerdown', e => { sy = e.clientY; });
-  handle.addEventListener('pointerup', e => {
-    const dy = e.clientY - sy;
-    if (Math.abs(dy) < 10) go((sIdx + 1) % 3); else go(dy < 0 ? sIdx + 1 : sIdx - 1);
-  });
+  function down(e, viaBody) {
+    pending = true; dragging = false; fromBody = viaBody;
+    startX = e.clientX; startY = e.clientY; baseTY = pos()[SORDER[sIdx]];
+    lastY = e.clientY; lastT = e.timeStamp || 0; vel = 0;
+  }
+  function move(e) {
+    if (!pending && !dragging) return;
+    const dy = e.clientY - startY, dx = e.clientX - startX;
+    if (pending) {
+      if (fromBody) {
+        if (body.scrollTop > 0) { pending = false; return; }          // 내용 스크롤 중 → 시트는 그대로
+        if (dy > 6 && dy > Math.abs(dx)) { dragging = true; pending = false; sheet.style.transition = 'none'; }
+        else if (dy < -4 || Math.abs(dx) > 10) { pending = false; return; }
+        else return;
+      } else {
+        if (Math.abs(dy) > 2) { dragging = true; pending = false; sheet.style.transition = 'none'; }
+        else return;
+      }
+    }
+    if (!dragging) return;
+    e.preventDefault();
+    const P = pos();
+    const ty = Math.max(P.full, Math.min(P.peek, baseTY + dy));
+    sheet.style.transform = `translateY(${ty}px)`;
+    const now = e.timeStamp || 0;
+    if (now > lastT) { vel = (e.clientY - lastY) / (now - lastT); lastY = e.clientY; lastT = now; }
+  }
+  function up(e) {
+    if (pending && !dragging) { pending = false; if (!fromBody) go((sIdx + 1) % 3); return; }
+    if (!dragging) return;
+    dragging = false; sheet.style.transition = '';
+    const P = pos(), ty = baseTY + (e.clientY - startY);
+    let target;
+    if (vel > 0.45) target = 'peek';
+    else if (vel < -0.45) target = 'full';
+    else {
+      const cand = [['full', P.full], ['half', P.half], ['peek', P.peek]];
+      cand.sort((a, b) => Math.abs(ty - a[1]) - Math.abs(ty - b[1]));
+      target = cand[0][0];
+    }
+    setSheet(target);
+  }
+  handle.addEventListener('pointerdown', e => down(e, false));
+  body.addEventListener('pointerdown', e => down(e, true));
+  window.addEventListener('pointermove', move, { passive: false });
+  window.addEventListener('pointerup', up);
+  window.addEventListener('pointercancel', () => { pending = false; if (dragging) { dragging = false; setSheet(SORDER[sIdx]); } });
 }
 
 /* ---------- 검색 ---------- */
@@ -230,45 +286,109 @@ function initSearch() {
   input.oninput = () => { searchQ = input.value.trim(); listLimit = 60; renderMarkers(); renderList(); setSheet('half'); };
 }
 
-/* ---------- 갤러리 ---------- */
-let galleryList = [], galleryShown = 0, galleryObserver = null;
-function initGallery() {
-  $('#btn-view').onclick = openGallery;
-  $('#gallery-close').onclick = () => { $('#gallery').hidden = true; if (galleryObserver) galleryObserver.disconnect(); };
+/* ---------- 내 위치 ---------- */
+let myLocMarker = null;
+function sheetState() { return SORDER[sIdx]; }
+function initLocate() {
+  const btn = $('#btn-locate'); if (!btn) return;
+  btn.onclick = () => {
+    if (!navigator.geolocation) { alert('이 기기는 위치를 지원하지 않아요.'); return; }
+    btn.classList.add('locating');
+    navigator.geolocation.getCurrentPosition(pos => {
+      btn.classList.remove('locating'); btn.classList.add('on');
+      const { latitude: la, longitude: lo } = pos.coords;
+      userLoc = { la, lo }; sortMode = 'near';
+      showMyLocation(la, lo);
+      map.setView([la, lo], Math.max(map.getZoom(), 14), { animate: true });
+      renderList();
+      if (sheetState() === 'peek') setSheet('half');
+    }, () => {
+      btn.classList.remove('locating');
+      alert('위치를 가져올 수 없어요. 브라우저 설정에서 위치 권한을 허용해 주세요.');
+    }, { enableHighAccuracy: true, timeout: 9000, maximumAge: 30000 });
+  };
 }
-function openGallery() {
-  galleryList = visiblePlaces().filter(p => p.ph.length).sort(sortPlaces);
-  galleryShown = 0;
-  $('#gallery-title').textContent = `갤러리 · ${galleryList.length}곳`;
-  const grid = $('#gallery-grid');
-  grid.innerHTML = '';
-  $('#gallery').hidden = false;
-  if (!galleryList.length) { grid.innerHTML = `<p style="padding:30px;color:var(--ink-2)">사진이 있는 장소가 아직 없어요.</p>`; return; }
-  renderGalleryChunk();
+function showMyLocation(la, lo) {
+  if (!map) return;
+  if (myLocMarker) map.removeLayer(myLocMarker);
+  myLocMarker = L.marker([la, lo], {
+    zIndexOffset: 4000, interactive: false, keyboard: false,
+    icon: L.divIcon({ html: '<div class="myloc"></div>', className: 'myloc-wrap', iconSize: [18, 18], iconAnchor: [9, 9] })
+  }).addTo(map);
 }
-function renderGalleryChunk() {
-  const grid = $('#gallery-grid'), CHUNK = 30;
-  const slice = galleryList.slice(galleryShown, galleryShown + CHUNK);
-  const old = document.getElementById('gallery-sentinel'); if (old) old.remove();
-  const frag = document.createDocumentFragment();
-  slice.forEach((p, i) => {
-    const idx = galleryShown + i;
-    const d = document.createElement('div');
-    d.className = 'gcard';
-    d.innerHTML = `<img loading="lazy" decoding="async" src="${picSrc(p.ph[0])}" alt=""><div class="gname">${esc(p.n)}</div>`;
-    d.onclick = () => { $('#gallery').hidden = true; openDetail(galleryList[idx]); };
-    frag.appendChild(d);
+
+/* ---------- 지역 드릴다운 (도 > 시군구 > 동) ---------- */
+let regionDrill = { sido: '', gu: '' };
+function shortRg(s) { return String(s || '').replace('특별자치도', '').replace('특별자치시', '').replace('특별시', '').replace('광역시', ''); }
+function regionLabel() { if (!activeRegion) return '지역'; return activeRegion.dong || shortRg(activeRegion.gu) || shortRg(activeRegion.sido) || '지역'; }
+function makeRegionChip() {
+  const b = document.createElement('button');
+  b.className = 'chip region-chip' + (activeRegion ? ' on' : '');
+  b.innerHTML = `<svg viewBox="0 0 24 24" class="rg-ic"><path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>` +
+    esc(regionLabel()) + (activeRegion ? ' <span class="rg-x">×</span>' : '');
+  b.onclick = e => { if (activeRegion && e.target.closest('.rg-x')) { applyRegion(null); return; } openRegion(); };
+  return b;
+}
+function initRegion() {
+  const cl = $('#region-close'); if (cl) cl.onclick = () => { $('#region').hidden = true; };
+}
+function openRegion() {
+  regionDrill = { sido: (activeRegion && activeRegion.sido) || '', gu: (activeRegion && activeRegion.gu) || '' };
+  $('#region').hidden = false; renderRegion();
+}
+function rgBtn(label, count, drill, onClick) {
+  const b = document.createElement('button');
+  b.className = 'rgrow' + (drill ? ' drill' : '');
+  b.innerHTML = `<span class="rgname">${esc(label)}</span><span class="rgcnt">${count}</span>` + (drill ? '<span class="rgchev">›</span>' : '');
+  b.onclick = onClick; return b;
+}
+function renderRegion() {
+  const crumb = $('#region-crumb'), body = $('#region-body');
+  const vis = PLACES.filter(p => p.map && p.sido);
+  crumb.innerHTML = '';
+  const steps = [['전국', 'all']];
+  if (regionDrill.sido) steps.push([shortRg(regionDrill.sido), 'sido']);
+  if (regionDrill.gu) steps.push([shortRg(regionDrill.gu), 'gu']);
+  steps.forEach((st, i) => {
+    const c = document.createElement('button'); c.className = 'crumb'; c.textContent = st[0];
+    c.onclick = () => { if (st[1] === 'all') regionDrill = { sido: '', gu: '' }; else if (st[1] === 'sido') regionDrill.gu = ''; renderRegion(); };
+    crumb.appendChild(c);
+    if (i < steps.length - 1) { const sep = document.createElement('span'); sep.className = 'crumb-sep'; sep.textContent = '›'; crumb.appendChild(sep); }
   });
-  grid.appendChild(frag);
-  galleryShown += slice.length;
-  if (galleryShown < galleryList.length) {
-    const s = document.createElement('div');
-    s.id = 'gallery-sentinel'; s.style.cssText = 'grid-column:1/-1;height:1px';
-    grid.appendChild(s);
-    if (galleryObserver) galleryObserver.disconnect();
-    galleryObserver = new IntersectionObserver(es => { if (es[0].isIntersecting) renderGalleryChunk(); }, { root: grid, rootMargin: '400px' });
-    galleryObserver.observe(s);
+  body.innerHTML = '';
+  const group = (arr, key) => { const m = {}; arr.forEach(p => { const k = p[key]; if (k) m[k] = (m[k] || 0) + 1; }); return m; };
+  if (!regionDrill.sido) {
+    $('#region-title').textContent = '지역 선택 · 도/시';
+    body.appendChild(rgBtn('전국 전체', vis.length, false, () => applyRegion(null)));
+    const m = group(vis, 'sido');
+    Object.keys(m).sort((a, b) => m[b] - m[a]).forEach(s => body.appendChild(rgBtn(shortRg(s), m[s], true, () => { regionDrill.sido = s; regionDrill.gu = ''; renderRegion(); })));
+  } else if (!regionDrill.gu) {
+    $('#region-title').textContent = shortRg(regionDrill.sido);
+    const sub = vis.filter(p => p.sido === regionDrill.sido);
+    body.appendChild(rgBtn(shortRg(regionDrill.sido) + ' 전체', sub.length, false, () => applyRegion({ sido: regionDrill.sido })));
+    const m = group(sub, 'gu');
+    Object.keys(m).sort((a, b) => m[b] - m[a]).forEach(g => {
+      const hasDong = sub.some(p => p.gu === g && p.dong);
+      body.appendChild(rgBtn(shortRg(g), m[g], hasDong, hasDong ? () => { regionDrill.gu = g; renderRegion(); } : () => applyRegion({ sido: regionDrill.sido, gu: g })));
+    });
+  } else {
+    $('#region-title').textContent = shortRg(regionDrill.gu);
+    const sub = vis.filter(p => p.sido === regionDrill.sido && p.gu === regionDrill.gu);
+    body.appendChild(rgBtn(shortRg(regionDrill.gu) + ' 전체', sub.length, false, () => applyRegion({ sido: regionDrill.sido, gu: regionDrill.gu })));
+    const m = group(sub, 'dong');
+    Object.keys(m).sort((a, b) => m[b] - m[a]).forEach(d => body.appendChild(rgBtn(d, m[d], false, () => applyRegion({ sido: regionDrill.sido, gu: regionDrill.gu, dong: d }))));
+    const noDong = sub.filter(p => !p.dong).length;
+    if (noDong) { const n = document.createElement('div'); n.className = 'rg-note'; n.textContent = `그 외 ${noDong}곳은 동 정보가 아직 없어요`; body.appendChild(n); }
   }
+}
+function applyRegion(r) {
+  activeRegion = r;
+  $('#region').hidden = true;
+  listLimit = 60;
+  renderChips(); renderMarkers(); renderList();
+  const vis = visiblePlaces();
+  if (vis.length && map) { try { map.fitBounds(L.latLngBounds(vis.map(p => [p.la, p.lo])), { padding: [60, 60], maxZoom: 14 }); } catch (e) {} }
+  setSheet('half');
 }
 
 /* ---------- AI 추천 코스 ---------- */
@@ -410,6 +530,8 @@ function initNearby() {
   navigator.geolocation.getCurrentPosition(pos => {
     const { latitude: la, longitude: lo } = pos.coords;
     userLoc = { la, lo }; sortMode = 'near'; renderList();
+    showMyLocation(la, lo);
+    const lb = $('#btn-locate'); if (lb) lb.classList.add('on');
     const cand = PLACES.filter(p => p.map && !p.x).map(p => ({ p, d: haversine(la, lo, p.la, p.lo) })).sort((a, b) => a.d - b.d);
     const near = cand.find(c => c.p.ph.length && c.d < 30000) || (cand[0] && cand[0].d < 30000 ? cand[0] : null);
     if (near) {
@@ -432,12 +554,12 @@ function openGuide() {
   const catRows = C.CATS.map(c => { const n = catCount(c.k); return n ? `<div class="gcat"><span class="dot" style="background:${c.color}"></span>${esc(c.label || c.k)}<b>${n}</b></div>` : ''; }).join('');
   const feats = [
     ['지도', '핀 색이 곧 테마. 클러스터 숫자를 탭하면 펼쳐져요.'],
-    ['카테고리', '상단 칩으로 테마별 필터링.'],
+    ['지역', '맨 앞 지역 칩으로 도 › 시군구 › 동까지 좁혀보기.'],
+    ['카테고리', '테마 칩(대분류→세부)으로 필터링.'],
     ['검색', '이름·지역·메뉴로 검색(🔍).'],
-    ['갤러리', '사진으로 한눈에 둘러보기(▦).'],
+    ['내 위치', '상단 ◎ 버튼으로 현재 위치 표시 + 가까운 순 정렬.'],
     ['AI 추천', '기분/상황을 적으면 코스를 만들어줘요.'],
-    ['내 위치', 'GPS 허용 시 가까운 순 정렬 + 근처 추천.'],
-    ['장소 상세', '사진·메뉴·평점 + 네이버·길찾기·전화·공유.']
+    ['장소 상세', '사진·메뉴·평점 + 네이버·길찾기·전화·공유. 아래로 쓸어내려 닫기.']
   ];
   $('#guide-body').innerHTML =
     `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:6px">
