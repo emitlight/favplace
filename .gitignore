@@ -23,3 +23,7 @@ Thumbs.db
 # wrangler ºôµå Ä³½Ã/ÀÓ½Ã
 .wrangler/
 app/.wrangler/
+
+# fill_dong ë¡œê·¸
+fill_dong.log
+fill_dong_progress.txt

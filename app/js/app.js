@@ -26,14 +26,16 @@ function initGate() {
 /* ---------- 부트 ---------- */
 async function boot() {
   try {
-    const [p, m] = await Promise.all([
+    const [p, m, ls] = await Promise.all([
       fetch('./data/places.json', { cache: 'no-store' }).then(r => r.json()),
-      fetch('./data/meta.json', { cache: 'no-store' }).then(r => r.json()).catch(() => ({}))
+      fetch('./data/meta.json', { cache: 'no-store' }).then(r => r.json()).catch(() => ({})),
+      fetch('./data/lists.json', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ lists: [] }))
     ]);
-    PLACES = p; META = m || {};
+    PLACES = p; META = m || {}; loadCurated(ls);
   } catch (e) { console.error('데이터 로드 실패', e); PLACES = []; }
+  loadStore();
   initMap(); renderChips(); renderMarkers(); renderList();
-  initSheet(); initSearch(); initLocate(); initRegion(); initRecommend(); initNearby(); initGuide();
+  initSheet(); initSearch(); initLocate(); initRegion(); initMine(); initRecommend(); initNearby(); initGuide();
 }
 
 /* ---------- 지도 ---------- */
@@ -79,8 +81,9 @@ function matchRegion(p) {
   if (activeRegion.dong && p.dong !== activeRegion.dong) return false;
   return true;
 }
+function basePool() { return (activeMine && activeMine.type === 'curated') ? curatedMembers(activeMine.id) : PLACES; }
 function visiblePlaces() {
-  return PLACES.filter(p => p.map && (!activeCat || p.c1 === activeCat) && (!activeSub || p.c2 === activeSub) && matchRegion(p) && matchSearch(p));
+  return basePool().filter(p => p.map && (!activeCat || p.c1 === activeCat) && (!activeSub || p.c2 === activeSub) && matchRegion(p) && matchMine(p) && matchSearch(p));
 }
 function renderMarkers() {
   if (!clusterGroup) return;
@@ -95,6 +98,7 @@ function renderChips() {
   const el = $('#chips'); el.innerHTML = '';
   const row1 = document.createElement('div'); row1.className = 'chiprow';
   row1.appendChild(makeRegionChip());
+  row1.appendChild(makeMineChip());
   row1.appendChild(makeChip(null, '전체', null));
   C.CATS.forEach(c => { if (catCount(c.k) > 0) row1.appendChild(makeChip(c.k, c.label || c.k, c.color)); });
   el.appendChild(row1);
@@ -133,8 +137,8 @@ function sortPlaces(a, b) {
 }
 function cardHTML(p) {
   const thumb = p.ph[0] ? `<img class="thumb" loading="lazy" src="${picSrc(p.ph[0])}" alt="">` : `<div class="thumb skeleton"></div>`;
-  return `<div class="pcard">${thumb}<div class="meta">
-    <div class="nm">${esc(p.n)}${p.x ? ' <span class="tag-closed">폐업</span>' : ''}</div>
+  return `<div class="pcard${isVisited(p.id) ? ' visited' : ''}">${thumb}<div class="meta">
+    <div class="nm">${isVisited(p.id) ? '<span class="vchk">✓</span> ' : ''}${esc(p.n)}${p.x ? ' <span class="tag-closed">폐업</span>' : ''}</div>
     <div class="ct"><span class="dot" style="background:${catColor(p.c1)}"></span>${esc(p.nc || catLabel(p.c1))}${p.sc ? ` · <span class="score">★${p.sc}</span>` : ''}${userLoc ? ` · <span class="dist">${fmtDist(distTo(p))}</span>` : ''}</div>
     ${p.mc ? `<div class="mc">${esc(p.mc)}</div>` : `<div class="rg">${esc(p.rg)}</div>`}
   </div></div>`;
@@ -176,7 +180,8 @@ function openDetail(p) {
     <div class="sub"><span>📍 ${esc(p.rg)}</span>${(p.f && p.f.filter(Boolean).length) ? `<span>· 폴더: ${esc(p.f.filter(Boolean).join(', '))}</span>` : ''}</div>
     ${p.mc ? `<div class="micro">${esc(p.mc)}</div>` : ''}
     ${kw}
-    ${p.memo ? `<div class="sec-title">내 메모</div><div class="micro">${esc(p.memo)}</div>` : ''}
+    ${p.memo ? `<div class="sec-title">네이버 메모</div><div class="micro">${esc(p.memo)}</div>` : ''}
+    ${detailMineHTML(p)}
     ${menus}
     <div class="actions">
       <button class="act primary" id="d-naver">네이버</button>
@@ -199,6 +204,7 @@ function openDetail(p) {
     try { if (navigator.share) await navigator.share({ title: p.n, text: `${p.n} · ${p.rg}`, url: pageUrl }); else { await navigator.clipboard.writeText(pageUrl); alert('링크를 복사했어요'); } } catch (e) {}
   };
   const sim = $('#d-sim'); if (sim) sim.onclick = () => openRecommend(`'${p.n}'(${p.rg})와 비슷한 분위기의 장소로 코스 짜줘`);
+  bindDetailMine(p, body);
   if (p.ph.length > 1) {
     const track = $('.carousel-track', body), wrap = document.createElement('div');
     wrap.className = 'carousel-dots';
@@ -391,6 +397,193 @@ function applyRegion(r) {
   setSheet('half');
 }
 
+/* ---------- 나만의 기록 (방문·메모·리스트) : 기기 저장 ---------- */
+const SKEY = 'hymap_store_v1';
+let Store = { visited: [], memo: {}, lists: [] };
+let activeMine = null;
+
+/* 큐레이션 리스트 (배포 데이터 lists.json — 하영이 준 장소 정보로 채움) */
+let CURATED = [], curPool = {};
+function normCurPlace(x) {
+  const la = +x.la || 0, lo = +x.lo || 0;
+  return {
+    id: String(x.id != null ? x.id : ('x' + Math.random().toString(36).slice(2))),
+    n: x.n || '(이름없음)', la, lo, c1: x.c1 || '명소', c2: x.c2 || '', nc: x.nc || '',
+    tel: x.tel || null, sido: x.sido || '', gu: x.gu || '', dong: x.dong || '',
+    rg: x.rg || [x.sido, x.gu].filter(Boolean).join(' '), rcode: '', f: [], memo: x.memo || '',
+    mc: x.mc || '', sc: x.sc != null ? x.sc : null, rv: x.rv != null ? x.rv : null,
+    ph: Array.isArray(x.ph) ? x.ph : [], mn: Array.isArray(x.mn) ? x.mn : [], kw: Array.isArray(x.kw) ? x.kw : [],
+    x: 0, en: 0, map: (la && lo) ? 1 : 0, cur: 1
+  };
+}
+function loadCurated(data) {
+  CURATED = (data && Array.isArray(data.lists)) ? data.lists : [];
+  curPool = {};
+  CURATED.forEach(l => { l._inline = (l.places || []).map(normCurPlace); l._inline.forEach(p => { curPool[p.id] = p; }); });
+}
+function curatedById(id) { return CURATED.find(l => l.id === id); }
+function curatedMembers(id) {
+  const l = curatedById(id); if (!l) return [];
+  const byId = {}; PLACES.forEach(p => byId[String(p.id)] = p);
+  const out = [];
+  (l.ids || []).forEach(i => { const p = byId[String(i)]; if (p) out.push(p); });
+  (l._inline || []).forEach(p => out.push(p));
+  return out;
+}
+function curatedCount(id) { return curatedMembers(id).length; }
+function loadStore() {
+  try { const s = JSON.parse(localStorage.getItem(SKEY)); if (s) Store = { visited: s.visited || [], memo: s.memo || {}, lists: s.lists || [] }; } catch (e) {}
+}
+function saveStore() { try { localStorage.setItem(SKEY, JSON.stringify(Store)); } catch (e) {} }
+function isVisited(id) { return Store.visited.includes(String(id)); }
+function toggleVisited(id) { id = String(id); const i = Store.visited.indexOf(id); if (i < 0) Store.visited.push(id); else Store.visited.splice(i, 1); saveStore(); }
+function getMemo(id) { return Store.memo[String(id)] || ''; }
+function setMemo(id, t) { id = String(id); t = (t || '').trim(); if (t) Store.memo[id] = t; else delete Store.memo[id]; saveStore(); }
+function listById(id) { return Store.lists.find(l => l.id === id); }
+function newList(name) { const id = 'L' + Date.now().toString(36) + Math.floor(Math.random() * 900 + 100); Store.lists.push({ id, name: (name || '새 리스트').trim(), ids: [] }); saveStore(); return id; }
+function toggleInList(listId, pid) { const l = listById(listId); if (!l) return; pid = String(pid); const i = l.ids.indexOf(pid); if (i < 0) l.ids.push(pid); else l.ids.splice(i, 1); saveStore(); }
+function deleteList(id) { Store.lists = Store.lists.filter(l => l.id !== id); if (activeMine && activeMine.type === 'list' && activeMine.id === id) activeMine = null; saveStore(); }
+function matchMine(p) {
+  if (!activeMine) return true;
+  if (activeMine.type === 'visited') return isVisited(p.id);
+  if (activeMine.type === 'unvisited') return !isVisited(p.id);
+  if (activeMine.type === 'list') { const l = listById(activeMine.id); return !!(l && l.ids.includes(String(p.id))); }
+  return true;
+}
+function mineLabel() {
+  if (!activeMine) return '내 기록';
+  if (activeMine.type === 'visited') return '가본 곳';
+  if (activeMine.type === 'unvisited') return '안 가본 곳';
+  if (activeMine.type === 'list') { const l = listById(activeMine.id); return l ? l.name : '리스트'; }
+  if (activeMine.type === 'curated') { const l = curatedById(activeMine.id); return l ? l.name : '리스트'; }
+  return '내 기록';
+}
+function makeMineChip() {
+  const b = document.createElement('button');
+  b.className = 'chip mine-chip' + (activeMine ? ' on' : '');
+  b.innerHTML = `<svg viewBox="0 0 24 24" class="rg-ic"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>` +
+    esc(mineLabel()) + (activeMine ? ' <span class="rg-x">×</span>' : '');
+  b.onclick = e => { if (activeMine && e.target.closest('.rg-x')) { applyMine(null); return; } openMine(); };
+  return b;
+}
+function initMine() { const cl = $('#mine-close'); if (cl) cl.onclick = () => { $('#mine').hidden = true; }; }
+function openMine() { $('#mine').hidden = false; renderMine(); }
+function renderMine() {
+  const body = $('#mine-body'); body.innerHTML = '';
+  const allN = PLACES.filter(p => p.map).length, vN = Store.visited.length;
+  const quick = [['all', '전체 보기', allN], ['visited', '✓ 가본 곳', vN], ['unvisited', '아직 안 간 곳', allN - vN]];
+  quick.forEach(([f, label, n]) => {
+    const b = document.createElement('button'); b.className = 'rgrow';
+    b.innerHTML = `<span class="rgname">${label}</span><span class="rgcnt">${n}</span>`;
+    b.onclick = () => applyMine(f === 'all' ? null : { type: f });
+    body.appendChild(b);
+  });
+  if (CURATED.length) {
+    const ct = document.createElement('div'); ct.className = 'sec-title'; ct.style.margin = '20px 4px 8px'; ct.textContent = '큐레이션 리스트'; body.appendChild(ct);
+    CURATED.forEach(l => {
+      const b = document.createElement('button'); b.className = 'rgrow crow';
+      b.innerHTML = `<span class="crow-txt"><span class="rgname">✦ ${esc(l.name)}</span>${l.note ? `<span class="rg-sub">${esc(l.note)}</span>` : ''}</span><span class="rgcnt">${curatedCount(l.id)}</span>`;
+      b.onclick = () => applyMine({ type: 'curated', id: l.id });
+      body.appendChild(b);
+    });
+  }
+  const t = document.createElement('div'); t.className = 'sec-title'; t.style.margin = '20px 4px 8px'; t.textContent = '내 리스트'; body.appendChild(t);
+  if (!Store.lists.length) { const e = document.createElement('div'); e.className = 'rg-note'; e.style.textAlign = 'left'; e.textContent = '아직 리스트가 없어요. 아래에서 만들어보세요.'; body.appendChild(e); }
+  Store.lists.forEach(l => {
+    const row = document.createElement('div'); row.className = 'listrow';
+    const main = document.createElement('button'); main.className = 'listrow-main';
+    main.innerHTML = `<span class="rgname">☆ ${esc(l.name)}</span><span class="rgcnt">${l.ids.length}</span>`;
+    main.onclick = () => applyMine({ type: 'list', id: l.id });
+    const del = document.createElement('button'); del.className = 'listrow-x'; del.setAttribute('aria-label', '리스트 삭제'); del.textContent = '✕';
+    del.onclick = () => { if (confirm(`'${l.name}' 리스트를 삭제할까요?\n(리스트만 지워지고 장소는 그대로예요)`)) { deleteList(l.id); renderMine(); renderChips(); renderMarkers(); renderList(); } };
+    row.appendChild(main); row.appendChild(del); body.appendChild(row);
+  });
+  const nl = document.createElement('div'); nl.className = 'lp-new';
+  nl.innerHTML = `<input id="mine-new" placeholder="새 리스트 이름" maxlength="24"><button id="mine-add">만들기</button>`;
+  body.appendChild(nl);
+  $('#mine-add', nl).onclick = () => { const v = ($('#mine-new', nl).value || '').trim(); if (!v) return; newList(v); renderMine(); renderChips(); };
+  const io = document.createElement('div'); io.className = 'mine-io';
+  io.innerHTML = `<button id="mine-export" class="mine-io-btn">기록 내보내기</button><button id="mine-import" class="mine-io-btn">가져오기</button><input id="mine-file" type="file" accept="application/json,.json" hidden>`;
+  body.appendChild(io);
+  $('#mine-export', io).onclick = exportStore;
+  $('#mine-import', io).onclick = () => $('#mine-file', io).click();
+  $('#mine-file', io).onchange = e => { importStore(e.target.files[0]); e.target.value = ''; };
+  const note = document.createElement('p'); note.className = 'rg-note'; note.style.cssText = 'text-align:left;margin-top:14px;line-height:1.5';
+  note.textContent = '방문·메모·리스트는 이 기기에 저장돼요. 다른 기기로 옮기려면 내보내기로 백업하고 가져오기 하세요.';
+  body.appendChild(note);
+}
+function applyMine(m) {
+  activeMine = m; $('#mine').hidden = true; listLimit = 60;
+  renderChips(); renderMarkers(); renderList();
+  const vis = visiblePlaces();
+  if (vis.length && map) { try { map.fitBounds(L.latLngBounds(vis.map(p => [p.la, p.lo])), { padding: [60, 60], maxZoom: 15 }); } catch (e) {} }
+  setSheet('half');
+}
+function exportStore() {
+  try {
+    const blob = new Blob([JSON.stringify(Store, null, 1)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = '내지도_기록_' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  } catch (e) { alert('내보내기에 실패했어요.'); }
+}
+function importStore(file) {
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = () => {
+    let s; try { s = JSON.parse(r.result); } catch { alert('올바른 백업 파일이 아니에요.'); return; }
+    if (!s || typeof s !== 'object') { alert('올바른 백업 파일이 아니에요.'); return; }
+    Store.visited = [...new Set([...(Store.visited || []), ...((s.visited || []).map(String))])];
+    Store.memo = Object.assign({}, (s.memo || {}), Store.memo);
+    (Array.isArray(s.lists) ? s.lists : []).forEach(il => {
+      if (!il || !il.name) return;
+      let ex = Store.lists.find(l => l.name === il.name);
+      if (!ex) { ex = { id: 'L' + Date.now().toString(36) + Math.floor(Math.random() * 900 + 100), name: String(il.name).slice(0, 24), ids: [] }; Store.lists.push(ex); }
+      ex.ids = [...new Set([...ex.ids, ...((il.ids || []).map(String))])];
+    });
+    saveStore(); renderMine(); renderChips(); renderMarkers(); renderList();
+    alert('기록을 가져왔어요.');
+  };
+  r.readAsText(file);
+}
+
+/* 상세 시트의 방문/메모/리스트 UI */
+function detailMineHTML(p) {
+  const vis = isVisited(p.id), memo = getMemo(p.id);
+  return `<div class="mine-box">
+    <div class="mine-actions">
+      <button class="mine-toggle${vis ? ' on' : ''}" id="m-visited">${vis ? '✓ 가봤어요' : '가봤어요'}</button>
+      <button class="mine-toggle" id="m-list">☆ 리스트에 추가</button>
+    </div>
+    <div id="m-listpick" class="listpick" hidden></div>
+    <div class="sec-title">내 메모</div>
+    <textarea id="m-memo" class="memo-input" rows="2" placeholder="이곳에 대한 나만의 메모를 남겨보세요">${esc(memo)}</textarea>
+    <div id="m-tags" class="mine-tags"></div>
+  </div>`;
+}
+function renderMineTags(p) {
+  const el = $('#m-tags'); if (!el) return;
+  const inLists = Store.lists.filter(l => l.ids.includes(String(p.id)));
+  el.innerHTML = inLists.map(l => `<span class="mine-tag">☆ ${esc(l.name)}</span>`).join('');
+}
+function renderListPick(p) {
+  const pick = $('#m-listpick'); if (!pick) return;
+  const chips = Store.lists.map(l => `<button class="lp-chip${l.ids.includes(String(p.id)) ? ' on' : ''}" data-id="${l.id}">${esc(l.name)}</button>`).join('');
+  pick.innerHTML = `<div class="lp-chips">${chips || '<span class="lp-empty">리스트를 만들어 이 장소를 담아보세요</span>'}</div>
+    <div class="lp-new"><input id="lp-name" placeholder="새 리스트 이름" maxlength="24"><button id="lp-add">담기</button></div>`;
+  $$('.lp-chip', pick).forEach(b => b.onclick = () => { toggleInList(b.dataset.id, p.id); b.classList.toggle('on'); renderMineTags(p); renderMarkers(); });
+  $('#lp-add', pick).onclick = () => { const v = ($('#lp-name', pick).value || '').trim(); if (!v) return; const id = newList(v); toggleInList(id, p.id); renderListPick(p); renderMineTags(p); renderChips(); };
+}
+function bindDetailMine(p, body) {
+  renderMineTags(p);
+  const vb = $('#m-visited', body); if (vb) vb.onclick = () => { toggleVisited(p.id); const v = isVisited(p.id); vb.classList.toggle('on', v); vb.textContent = v ? '✓ 가봤어요' : '가봤어요'; renderMarkers(); };
+  const lb = $('#m-list', body), pick = $('#m-listpick', body);
+  if (lb) lb.onclick = () => { pick.hidden = !pick.hidden; if (!pick.hidden) renderListPick(p); };
+  const mm = $('#m-memo', body);
+  if (mm) { let t; mm.oninput = () => { clearTimeout(t); t = setTimeout(() => setMemo(p.id, mm.value), 400); }; mm.onblur = () => setMemo(p.id, mm.value); }
+}
+
 /* ---------- AI 추천 코스 ---------- */
 const EXAMPLES = [
   '오늘 부산인데 대게 먹고 바다 보이는 카페 가고 싶어',
@@ -427,14 +620,14 @@ async function runRecommend() {
       if (data && Array.isArray(data.stops) && data.stops.length) {
         const byId = {}; PLACES.forEach(p => byId[String(p.id)] = p);
         const stops = data.stops.map(s => ({ p: byId[String(s.id)], why: s.why || '' })).filter(s => s.p);
-        if (stops.length) course = { note: data.note || 'AI 추천 코스', stops };
+        if (stops.length) course = { title: data.title || '', intro: data.intro || '', tips: data.tips || '', stops };
       }
     } catch (e) { /* 폴백 */ }
   }
   if (!course) course = heuristicCourse(q);
   renderCourse(course, res);
 }
-function slim(p) { return { id: p.id, n: p.n, c1: p.c1, c2: p.c2, nc: p.nc, rg: p.rg, kw: p.kw, sc: p.sc }; }
+function slim(p) { return { id: p.id, n: p.n, c1: p.c1, c2: p.c2, nc: p.nc, rg: p.rg, kw: p.kw, sc: p.sc, mc: (p.mc || '').slice(0, 60) }; }
 function candidatesFor(q) {
   let pool = PLACES.filter(p => p.map && !p.x);
   const sidos = [...new Set(PLACES.map(p => p.sido).filter(Boolean))];
@@ -486,21 +679,27 @@ function heuristicCourse(q) {
   }
   const orank = { 음식점: 0, 술집바: 1, 카페: 2, 문화: 3, 명소: 4, 자연: 4, 레저: 4, 숙박: 5, 쇼핑: 6, 생활: 7, 주거: 8 };
   pick.sort((a, b) => (orank[a.c1] ?? 9) - (orank[b.c1] ?? 9));
-  return { note: region ? `${region} 중심 추천` : '전체에서 추천', stops: pick.map(p => ({ p, why: p.mc || '' })) };
+  return { title: region ? `${region} 코스` : '오늘의 코스', intro: region ? `'${q}' 요청을 바탕으로 ${region} 근처 저장 장소에서 골랐어요.` : `'${q}' 요청을 바탕으로 저장 장소에서 어울리는 곳을 골랐어요.`, stops: pick.map(p => ({ p, why: p.mc || '' })) };
 }
 function renderCourse(course, res) {
   if (!course || !course.stops || !course.stops.length) {
-    res.innerHTML = '<p style="color:var(--ink-2);padding:10px 0">조건에 맞는 저장 장소를 못 찾았어요. 지역이나 종류를 바꿔서 적어보세요.</p>';
+    const why = course && course.intro ? esc(course.intro) : '조건에 맞는 저장 장소를 못 찾았어요. 지역이나 종류를 바꿔서 적어보세요.';
+    res.innerHTML = `<p style="color:var(--ink-2);padding:10px 0;line-height:1.6">${why}</p>`;
     return;
   }
   const s = course.stops;
-  res.innerHTML = `<div class="sec-title">추천 코스 · ${esc(course.note || '')}</div>` +
-    s.map((it, i) => { const p = it.p; return `<div class="course-stop">
+  let html = '';
+  if (course.title) html += `<div class="course-title">${esc(course.title)}</div>`;
+  if (course.intro) html += `<div class="course-intro"><span class="ai-badge">AI 분석</span>${esc(course.intro)}</div>`;
+  else html += `<div class="sec-title">추천 코스</div>`;
+  html += s.map((it, i) => { const p = it.p; return `<div class="course-stop">
       <div class="course-col"><div class="num">${i + 1}</div>${i < s.length - 1 ? '<div class="course-line"></div>' : ''}</div>
       <div class="pcard" style="flex:1">${p.ph[0] ? `<img class="thumb" loading="lazy" src="${picSrc(p.ph[0])}">` : '<div class="thumb skeleton"></div>'}
         <div class="meta"><div class="nm">${esc(p.n)}</div>
-        <div class="ct"><span class="dot" style="background:${catColor(p.c1)}"></span>${esc(p.nc || catLabel(p.c1))}</div>
-        <div class="mc">${esc(it.why || p.rg)}</div></div></div></div>`; }).join('');
+        <div class="ct"><span class="dot" style="background:${catColor(p.c1)}"></span>${esc(p.nc || catLabel(p.c1))}${p.rg ? ` · ${esc(p.rg)}` : ''}</div>
+        <div class="mc">${esc(it.why || p.mc || p.rg)}</div></div></div></div>`; }).join('');
+  if (course.tips) html += `<div class="course-tips">💡 ${esc(course.tips)}</div>`;
+  res.innerHTML = html;
   $$('.pcard', res).forEach((el, i) => el.onclick = () => { $('#recommend').hidden = true; openDetail(s[i].p); });
   plotCourse(s.map(it => it.p));
 }
@@ -557,6 +756,7 @@ function openGuide() {
     ['지역', '맨 앞 지역 칩으로 도 › 시군구 › 동까지 좁혀보기.'],
     ['카테고리', '테마 칩(대분류→세부)으로 필터링.'],
     ['검색', '이름·지역·메뉴로 검색(🔍).'],
+    ['내 기록', '방문 체크·나만의 메모·리스트로 나만의 지도를 만들어요.'],
     ['내 위치', '상단 ◎ 버튼으로 현재 위치 표시 + 가까운 순 정렬.'],
     ['AI 추천', '기분/상황을 적으면 코스를 만들어줘요.'],
     ['장소 상세', '사진·메뉴·평점 + 네이버·길찾기·전화·공유. 아래로 쓸어내려 닫기.']

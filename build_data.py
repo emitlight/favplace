@@ -113,6 +113,13 @@ if os.path.exists(ep):
         if r.get("ok") or r.get("closed"):
             enr[r["sid"]] = r
 
+# 동 보강 매핑 (fill_dong.py 가 지번주소에서 추출한 sid->동)
+dmap = {}
+dp = os.path.join(BASE, "dong_map.json")
+if os.path.exists(dp):
+    try: dmap = json.load(open(dp, encoding="utf-8"))
+    except: dmap = {}
+
 def derive_kw(e, name=""):
     parts = [name or ""]
     if e:
@@ -140,6 +147,8 @@ for ent in data["my"]["bookmarkSync"]["bookmarks"]:
     micro_list = e.get("micro") if e else None
     micro_str = " ".join(micro_list) if isinstance(micro_list, list) else (micro_list or "")
     sido, sigungu, dong = region(b.get("address"))
+    if not dong:
+        dong = dmap.get(str(b.get("sid")), "") or ""
     c1, c2 = classify(ncv, b.get("mcid"), b.get("name"), micro_str)
     mm = b.get("bookmarkMismatchInfo") or {}
     closed = ("UNAVAILABLE" in (mm.get("details") or [])) or bool(e and e.get("closed"))

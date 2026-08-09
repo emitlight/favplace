@@ -22,19 +22,21 @@ export async function onRequestPost({ request, env }) {
   if (!q || !cands.length) return j({ error: "q/candidates 필요" }, 400);
 
   const prompt =
-`너는 사용자의 '저장된 장소'들로 하루 나들이 코스를 짜주는 한국어 큐레이터야.
+`너는 사용자가 '저장해 둔 장소'만으로 나들이 코스를 설계하는 한국어 로컬 큐레이터야.
 사용자 요청: "${q}"
 
-후보 장소(JSON 배열, 이 안에서만 골라야 함):
+후보 장소(JSON, 반드시 이 안에서만 선택):
 ${JSON.stringify(cands)}
 
-지침:
-- 요청의 지역/음식종류/분위기/시간대/동행 맥락을 최대한 반영.
-- 후보 중 3~4곳을 자연스러운 동선과 흐름(예: 식사→카페/산책→술)으로 순서대로 선정.
-- 같은 종류만 나열하지 말 것. 무관한 곳 제외.
-- 각 장소에 한 줄 추천 이유(why)를 친근하게.
+작성 지침:
+- 요청의 지역·음식종류·분위기·시간대·동행·날씨 맥락을 해석해서 반영.
+- 후보 중 3~5곳을 자연스러운 동선/흐름(식사→카페·산책→술 등)으로 순서대로 선정. 같은 종류만 나열 금지, 무관한 곳 제외.
+- intro: 요청을 어떻게 이해했고 왜 이 코스인지 2~3문장의 짧은 큐레이션 노트(친근하게).
+- 각 stop.why: 그 장소를 고른 이유 + 작은 팁을 한두 문장.
+- tips: 동선·시간·주차·날씨 등 실용 팁 한 줄(없으면 빈 문자열 "").
+- 후보에 마땅한 곳이 없으면 stops는 빈 배열로 두고 intro로 솔직히 이유를 설명.
 반드시 아래 JSON만 출력:
-{"note":"코스 한 줄 요약","stops":[{"id":"후보의 id","why":"추천 이유 한 줄"}]}`;
+{"title":"코스 제목","intro":"큐레이션 노트","stops":[{"id":"후보의 id","why":"이유+팁"}],"tips":"실용 팁"}`;
 
   try {
     const r = await fetch(
@@ -50,8 +52,12 @@ ${JSON.stringify(cands)}
     );
     const data = await r.json();
     const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-    let out; try { out = JSON.parse(txt); } catch { out = { note: "", stops: [] }; }
+    let out; try { out = JSON.parse(txt); } catch { out = {}; }
+    out = out || {};
     if (!Array.isArray(out.stops)) out.stops = [];
+    out.title = typeof out.title === "string" ? out.title : "";
+    out.intro = typeof out.intro === "string" ? out.intro : (typeof out.note === "string" ? out.note : "");
+    out.tips = typeof out.tips === "string" ? out.tips : "";
     return j(out);
   } catch (e) {
     return j({ error: String(e) }, 502);
