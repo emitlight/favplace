@@ -17,16 +17,16 @@ window.CONFIG = {
 
   // 카테고리 정의 (순서/색)
   CATS: [
-    { k:"음식점", label:"음식점",      color:"#F06543" },
-    { k:"카페",   label:"카페",        color:"#C0824E" },
-    { k:"술집바", label:"술집·바",     color:"#7C6CE0" },
-    { k:"문화",   label:"문화",        color:"#2FA36B" },
-    { k:"레저",   label:"레저",        color:"#12B3A6" },
-    { k:"명소",   label:"명소",        color:"#E85D9A" },
-    { k:"자연",   label:"자연",        color:"#6DAE3E" },
-    { k:"숙박",   label:"숙박",        color:"#3B82F6" },
-    { k:"쇼핑",   label:"쇼핑",        color:"#A855C7" },
+    { k:"음식점", label:"음식점",      color:"#E85C48" },
+    { k:"카페",   label:"카페",        color:"#BE7E4C" },
+    { k:"술집바", label:"술집·바",     color:"#6E63D6" },
+    { k:"문화",   label:"문화",        color:"#2F9E6B" },
+    { k:"레저",   label:"레저",        color:"#1AA0BE" },
+    { k:"명소",   label:"명소",        color:"#E35D97" },
+    { k:"자연",   label:"자연",        color:"#6BAF45" },
+    { k:"숙박",   label:"숙박",        color:"#3E86EF" },
+    { k:"쇼핑",   label:"쇼핑",        color:"#BC55B0" },
     { k:"주거",   label:"주거·부동산",  color:"#64748B" },
-    { k:"생활",   label:"생활",        color:"#94A3B8" }
+    { k:"생활",   label:"생활",        color:"#99A7B6" }
   ]
 };

@@ -5,7 +5,7 @@ const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
 const C = window.CONFIG;
 const catMap = Object.fromEntries(C.CATS.map(c => [c.k, c]));
-const catColor = k => (catMap[k] && catMap[k].color) || '#9A9890';
+const catColor = k => (catMap[k] && catMap[k].color) || '#99A7B6';
 const catLabel = k => (catMap[k] && (catMap[k].label || catMap[k].k)) || k;
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
 const fmtN = n => (n == null ? '' : Number(n).toLocaleString('ko-KR'));
@@ -46,6 +46,7 @@ function initMap() {
   clusterGroup = L.markerClusterGroup({ maxClusterRadius: 48, showCoverageOnHover: false, iconCreateFunction: clusterIcon });
   map.addLayer(clusterGroup);
   selLayer = L.layerGroup().addTo(map);
+  setTimeout(() => { try { map.invalidateSize(); } catch (e) {} }, 350);
 }
 function highlight(p) {
   if (!selLayer) return;
@@ -58,7 +59,7 @@ function highlight(p) {
 function clusterIcon(cluster) {
   const n = cluster.getChildCount();
   const size = n < 10 ? 38 : n < 50 ? 46 : 54;
-  return L.divIcon({ html: `<div class="cluster" style="width:${size}px;height:${size}px;background:var(--brand)">${n}</div>`, className: '', iconSize: [size, size] });
+  return L.divIcon({ html: `<div class="cluster" style="width:${size}px;height:${size}px;background:var(--brand-solid)">${n}</div>`, className: '', iconSize: [size, size] });
 }
 function markerFor(p) {
   const m = L.marker([p.la, p.lo], {
@@ -111,6 +112,7 @@ function renderChips() {
       el.appendChild(row2);
     }
   }
+  if (el.querySelector('.subrow')) { const nb = $('#nearby'); if (nb) nb.hidden = true; }
 }
 function makeChip(key, label, color) {
   const cnt = key === null ? PLACES.filter(p => p.map).length : catCount(key);
@@ -153,7 +155,7 @@ function renderList() {
   let html = `<div class="list-head"><b>${esc(activeCat ? catLabel(activeCat) : '전체')}</b><span>${vis.length}곳${searchQ ? ` · "${esc(searchQ)}"` : ''}</span>${toggle}</div>`;
   html += shown.map(cardHTML).join('<div class="divider"></div>');
   if (vis.length > listLimit) html += `<button id="more" class="act" style="margin-top:14px">더 보기 (${vis.length - listLimit}곳)</button>`;
-  if (!vis.length) html += `<p style="color:var(--ink-2);text-align:center;padding:30px 0">표시할 장소가 없어요.</p>`;
+  if (!vis.length) html += `<div style="text-align:center;padding:44px 0;color:var(--ink-3)"><span class="pin" style="width:34px;height:34px;opacity:.35"></span><p style="margin:14px 0 0;font-size:14px;color:var(--ink-2)">조건에 맞는 장소가 없어요</p><p style="margin:4px 0 0;font-size:12.5px">필터를 바꾸거나 지역을 넓혀보세요</p></div>`;
   body.innerHTML = html; body.scrollTop = 0;
   $$('.pcard', body).forEach((el, i) => el.onclick = () => openDetail(shown[i]));
   $$('.sortbtn', body).forEach(b => b.onclick = () => { sortMode = b.dataset.s; listLimit = 60; renderList(); });
@@ -171,25 +173,26 @@ function openDetail(p) {
   const kw = (p.kw && p.kw.length) ? `<div class="kw-row">${p.kw.map(k => `<span class="kw">#${esc(k)}</span>`).join('')}</div>` : '';
   const menus = (p.mn && p.mn.length) ? `<div class="sec-title">대표 메뉴</div>` + p.mn.map(m => `<div class="menu-row"><span>${esc(m.n)}</span><span class="pr">${esc(m.p || '')}</span></div>`).join('') : '';
   body.innerHTML = `<div class="detail">
+    <button class="detail-close" id="d-close" aria-label="상세 닫기">✕</button>
     ${carousel}
     <h2>${esc(p.n)}${p.x ? ' <span class="tag-closed">폐업</span>' : ''}</h2>
     <div class="sub">
       <span class="badge"><span class="dot" style="background:${catColor(p.c1)}"></span>${esc(p.nc || catLabel(p.c1))}</span>
       ${p.sc ? `<span class="score">★ ${p.sc}</span>` : ''}${p.rv ? `<span>리뷰 ${fmtN(p.rv)}</span>` : ''}
     </div>
-    <div class="sub"><span>📍 ${esc(p.rg)}</span>${(p.f && p.f.filter(Boolean).length) ? `<span>· 폴더: ${esc(p.f.filter(Boolean).join(', '))}</span>` : ''}</div>
+    <div class="sub"><span><span class="pin sm" style="vertical-align:-2px;margin-right:4px"></span>${esc(p.rg)}</span>${(p.f && p.f.filter(Boolean).length) ? `<span>· 폴더: ${esc(p.f.filter(Boolean).join(', '))}</span>` : ''}</div>
     ${p.mc ? `<div class="micro">${esc(p.mc)}</div>` : ''}
     ${kw}
     ${p.memo ? `<div class="sec-title">네이버 메모</div><div class="micro">${esc(p.memo)}</div>` : ''}
     ${detailMineHTML(p)}
     ${menus}
+    <button class="act" id="d-sim" style="width:100%;margin-bottom:10px;background:var(--surface-2)">이런 곳 더 추천받기</button>
     <div class="actions">
       <button class="act primary" id="d-naver">네이버</button>
       <button class="act" id="d-dir">길찾기</button>
       ${p.tel ? '<button class="act" id="d-tel">전화</button>' : ''}
       <button class="act" id="d-share">공유</button>
     </div>
-    <button class="act" id="d-sim" style="width:100%;margin-top:8px;background:var(--surface-2)">✨ 이런 곳 더 추천받기</button>
   </div>`;
   setSheet('full');
   const pageUrl = `https://map.naver.com/p/entry/place/${p.id}`;
@@ -204,6 +207,7 @@ function openDetail(p) {
     try { if (navigator.share) await navigator.share({ title: p.n, text: `${p.n} · ${p.rg}`, url: pageUrl }); else { await navigator.clipboard.writeText(pageUrl); alert('링크를 복사했어요'); } } catch (e) {}
   };
   const sim = $('#d-sim'); if (sim) sim.onclick = () => openRecommend(`'${p.n}'(${p.rg})와 비슷한 분위기의 장소로 코스 짜줘`);
+  const dc = $('#d-close', body); if (dc) dc.onclick = closeDetail;
   bindDetailMine(p, body);
   if (p.ph.length > 1) {
     const track = $('.carousel-track', body), wrap = document.createElement('div');
@@ -216,6 +220,12 @@ function openDetail(p) {
       $$('.carousel-dots i', body).forEach((d, i) => d.classList.toggle('on', i === idx));
     });
   }
+}
+
+function closeDetail() {
+  if (selLayer) selLayer.clearLayers();
+  renderList();
+  setSheet('peek');
 }
 
 /* ---------- 바텀시트 동작 (실시간 드래그 + 스냅) ---------- */
@@ -342,11 +352,16 @@ function openRegion() {
   regionDrill = { sido: (activeRegion && activeRegion.sido) || '', gu: (activeRegion && activeRegion.gu) || '' };
   $('#region').hidden = false; renderRegion();
 }
-function rgBtn(label, count, drill, onClick) {
-  const b = document.createElement('button');
-  b.className = 'rgrow' + (drill ? ' drill' : '');
-  b.innerHTML = `<span class="rgname">${esc(label)}</span><span class="rgcnt">${count}</span>` + (drill ? '<span class="rgchev">›</span>' : '');
-  b.onclick = onClick; return b;
+function rgBtn(label, count, onApply, onDrill) {
+  const row = document.createElement('div'); row.className = 'rgrow2';
+  const main = document.createElement('button'); main.className = 'rgrow-main';
+  main.innerHTML = `<span class="rgname">${esc(label)}</span><span class="rgcnt">${count}</span>`;
+  main.onclick = onApply; row.appendChild(main);
+  if (onDrill) {
+    const d = document.createElement('button'); d.className = 'rgdrill'; d.setAttribute('aria-label', label + ' 하위 지역 보기'); d.textContent = '›';
+    d.onclick = onDrill; row.appendChild(d);
+  }
+  return row;
 }
 function renderRegion() {
   const crumb = $('#region-crumb'), body = $('#region-body');
@@ -362,27 +377,32 @@ function renderRegion() {
     if (i < steps.length - 1) { const sep = document.createElement('span'); sep.className = 'crumb-sep'; sep.textContent = '›'; crumb.appendChild(sep); }
   });
   body.innerHTML = '';
+  const hint = document.createElement('p'); hint.className = 'rg-hint'; hint.textContent = '지역을 누르면 지도에 바로 표시돼요. › 를 누르면 더 좁게 볼 수 있어요.'; body.appendChild(hint);
   const group = (arr, key) => { const m = {}; arr.forEach(p => { const k = p[key]; if (k) m[k] = (m[k] || 0) + 1; }); return m; };
   if (!regionDrill.sido) {
     $('#region-title').textContent = '지역 선택 · 도/시';
-    body.appendChild(rgBtn('전국 전체', vis.length, false, () => applyRegion(null)));
+    body.appendChild(rgBtn('전국 전체', vis.length, () => applyRegion(null), null));
     const m = group(vis, 'sido');
-    Object.keys(m).sort((a, b) => m[b] - m[a]).forEach(s => body.appendChild(rgBtn(shortRg(s), m[s], true, () => { regionDrill.sido = s; regionDrill.gu = ''; renderRegion(); })));
+    Object.keys(m).sort((a, b) => m[b] - m[a]).forEach(s => body.appendChild(
+      rgBtn(shortRg(s), m[s], () => applyRegion({ sido: s }), () => { regionDrill.sido = s; regionDrill.gu = ''; renderRegion(); })
+    ));
   } else if (!regionDrill.gu) {
     $('#region-title').textContent = shortRg(regionDrill.sido);
     const sub = vis.filter(p => p.sido === regionDrill.sido);
-    body.appendChild(rgBtn(shortRg(regionDrill.sido) + ' 전체', sub.length, false, () => applyRegion({ sido: regionDrill.sido })));
+    body.appendChild(rgBtn(shortRg(regionDrill.sido) + ' 전체', sub.length, () => applyRegion({ sido: regionDrill.sido }), null));
     const m = group(sub, 'gu');
     Object.keys(m).sort((a, b) => m[b] - m[a]).forEach(g => {
       const hasDong = sub.some(p => p.gu === g && p.dong);
-      body.appendChild(rgBtn(shortRg(g), m[g], hasDong, hasDong ? () => { regionDrill.gu = g; renderRegion(); } : () => applyRegion({ sido: regionDrill.sido, gu: g })));
+      body.appendChild(rgBtn(shortRg(g), m[g], () => applyRegion({ sido: regionDrill.sido, gu: g }), hasDong ? () => { regionDrill.gu = g; renderRegion(); } : null));
     });
   } else {
     $('#region-title').textContent = shortRg(regionDrill.gu);
     const sub = vis.filter(p => p.sido === regionDrill.sido && p.gu === regionDrill.gu);
-    body.appendChild(rgBtn(shortRg(regionDrill.gu) + ' 전체', sub.length, false, () => applyRegion({ sido: regionDrill.sido, gu: regionDrill.gu })));
+    body.appendChild(rgBtn(shortRg(regionDrill.gu) + ' 전체', sub.length, () => applyRegion({ sido: regionDrill.sido, gu: regionDrill.gu }), null));
     const m = group(sub, 'dong');
-    Object.keys(m).sort((a, b) => m[b] - m[a]).forEach(d => body.appendChild(rgBtn(d, m[d], false, () => applyRegion({ sido: regionDrill.sido, gu: regionDrill.gu, dong: d }))));
+    Object.keys(m).sort((a, b) => m[b] - m[a]).forEach(d => body.appendChild(
+      rgBtn(d, m[d], () => applyRegion({ sido: regionDrill.sido, gu: regionDrill.gu, dong: d }), null)
+    ));
     const noDong = sub.filter(p => !p.dong).length;
     if (noDong) { const n = document.createElement('div'); n.className = 'rg-note'; n.textContent = `그 외 ${noDong}곳은 동 정보가 아직 없어요`; body.appendChild(n); }
   }
@@ -698,7 +718,7 @@ function renderCourse(course, res) {
         <div class="meta"><div class="nm">${esc(p.n)}</div>
         <div class="ct"><span class="dot" style="background:${catColor(p.c1)}"></span>${esc(p.nc || catLabel(p.c1))}${p.rg ? ` · ${esc(p.rg)}` : ''}</div>
         <div class="mc">${esc(it.why || p.mc || p.rg)}</div></div></div></div>`; }).join('');
-  if (course.tips) html += `<div class="course-tips">💡 ${esc(course.tips)}</div>`;
+  if (course.tips) html += `<div class="course-tips">${esc(course.tips)}</div>`;
   res.innerHTML = html;
   $$('.pcard', res).forEach((el, i) => el.onclick = () => { $('#recommend').hidden = true; openDetail(s[i].p); });
   plotCourse(s.map(it => it.p));
@@ -707,9 +727,10 @@ function plotCourse(stops) {
   if (window._courseLayer) map.removeLayer(window._courseLayer);
   const g = L.layerGroup();
   const latlngs = stops.map(p => [p.la, p.lo]);
-  L.polyline(latlngs, { color: '#F2542D', weight: 3, dashArray: '6 7', opacity: .85 }).addTo(g);
+  const brandCol = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim() || '#5C7CE0';
+  L.polyline(latlngs, { color: brandCol, weight: 3, dashArray: '6 7', opacity: .9 }).addTo(g);
   stops.forEach((p, i) => L.marker([p.la, p.lo], {
-    icon: L.divIcon({ html: `<div class="cluster" style="width:30px;height:30px;background:var(--brand)">${i + 1}</div>`, className: '', iconSize: [30, 30] })
+    icon: L.divIcon({ html: `<div class="cluster" style="width:30px;height:30px;background:var(--brand-solid)">${i + 1}</div>`, className: '', iconSize: [30, 30] })
   }).addTo(g));
   g.addTo(map); window._courseLayer = g;
   if (latlngs.length > 1) map.fitBounds(latlngs, { padding: [70, 70], maxZoom: 15 });
