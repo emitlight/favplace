@@ -1,22 +1,30 @@
 /* ============== 하영의 지도 — 디자인 시스템 ============== */
 :root{
-  --brand:#5C7CE0; --brand-2:#7FA8EC; --brand-ink:#4460C4; --brand-solid:#4C67C9; --ok:#12B886;
-  --brand-grad:linear-gradient(135deg,#5674DA,#6A67DE);
-  --bg:#F4F6FB; --surface:#FFFFFF; --surface-2:#EDF1F7;
-  --ink:#141A22; --ink-2:#5B6572; --ink-3:#97A2B1;
-  --line:rgba(20,34,52,.07); --line-2:rgba(20,34,52,.13);
-  --shadow:0 4px 16px rgba(30,55,90,.08); --shadow-lg:0 12px 34px rgba(30,55,90,.13);
-  --r:15px; --r-lg:20px; --r-xl:26px;
+  /* 키컬러 = 하늘색 */
+  --brand:#3FA9F5; --brand-2:#8AD1FB; --brand-ink:#1478C4; --brand-solid:#1476BE; --ok:#12B886;
+  /* 하늘색을 전면에 쓰되 글씨는 흰색이 아니라 딥네이비 — 하늘색 위 흰 글씨는 대비 1.95:1로 안 읽힘 */
+  --brand-grad:linear-gradient(135deg,#8AD1FB,#4FB0F5);
+  --on-brand:#0A3A63;
+  --brand-soft:rgba(63,169,245,.11);
+  --bg:#F1F6FB; --surface:#FFFFFF; --surface-2:#EAF2F9;
+  --ink:#16202B; --ink-2:#5A6B7C; --ink-3:#95A5B6;
+  --line:rgba(20,50,80,.07); --line-2:rgba(20,50,80,.13);
+  --shadow:0 6px 20px rgba(46,96,145,.09); --shadow-lg:0 16px 44px rgba(40,90,140,.14);
+  --glow:0 10px 26px rgba(63,169,245,.34);
+  --r:16px; --r-lg:22px; --r-xl:30px;
   --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme:dark){
   :root{
-    --brand:#5C82E8; --brand-2:#7BA0F0; --brand-ink:#AEC6FA; --brand-solid:#4E7EE6; --ok:#20C997;
-    --brand-grad:linear-gradient(135deg,#4E7EE6,#6A6EEA);
-    --bg:#0B1017; --surface:#141C26; --surface-2:#1E2835;
-    --ink:#EAF1F8; --ink-2:#A3AEBC; --ink-3:#6A7684;
+    --brand:#4FB4F7; --brand-2:#8AD1FB; --brand-ink:#9BD5FB; --brand-solid:#1B74B8; --ok:#20C997;
+    --brand-grad:linear-gradient(135deg,#8AD1FB,#4FB0F5);
+    --on-brand:#08304F;
+    --brand-soft:rgba(79,180,247,.15);
+    --bg:#0A1119; --surface:#131D28; --surface-2:#1C2836;
+    --ink:#E9F2F9; --ink-2:#A2B0BE; --ink-3:#6C7987;
     --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.15);
     --shadow:0 6px 22px rgba(0,0,0,.45); --shadow-lg:0 16px 44px rgba(0,0,0,.58);
+    --glow:0 10px 26px rgba(43,130,216,.4);
   }
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -38,7 +46,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
 /* ============== 비밀번호 게이트 ============== */
 .gate{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
-  background:radial-gradient(120% 80% at 50% 0%,rgba(92,124,224,.12),transparent 60%),var(--bg);padding:24px}
+  background:radial-gradient(120% 80% at 50% 0%,rgba(63,169,245,.16),transparent 60%),var(--bg);padding:24px}
 .gate-card{width:100%;max-width:340px;text-align:center;animation:rise .6s cubic-bezier(.2,.8,.2,1) both}
 .gate-logo{display:flex;justify-content:center;margin-bottom:18px}
 .gate-logo .pin{width:54px;height:54px}.gate-logo .pin::after{inset:15px}
@@ -48,7 +56,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 #gate-input{height:52px;border-radius:var(--r);border:1.5px solid var(--line-2);background:var(--surface);
   color:var(--ink);font-size:17px;text-align:center;letter-spacing:.3em;outline:none;transition:border-color .2s}
 #gate-input:focus{border-color:var(--brand)}
-#gate-form button{height:52px;border-radius:var(--r);background:var(--brand-grad);color:#fff;font-size:16px;font-weight:600;
+#gate-form button{height:52px;border-radius:var(--r);background:var(--brand-grad);color:var(--on-brand);font-size:16px;font-weight:700;
   transition:transform .12s,filter .2s}
 #gate-form button:active{transform:scale(.97);filter:brightness(.95)}
 .gate-err{color:#E24B4A;font-size:13px;margin-top:14px}
@@ -67,24 +75,20 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .icon-btn{width:44px;height:44px;border-radius:50%;background:var(--surface);box-shadow:var(--shadow);
   display:flex;align-items:center;justify-content:center;color:var(--ink);font-size:22px;transition:transform .12s}
 .icon-btn:active{transform:scale(.92)}
-.icon-btn.on{background:var(--brand);color:#fff}
+.icon-btn.on{background:var(--brand-grad);color:var(--on-brand);box-shadow:var(--glow)}
 .icon-btn.locating{opacity:.55;pointer-events:none}
 
 /* 카테고리 칩 */
-.chips{position:absolute;top:calc(var(--safe-top) + 66px);left:0;right:0;z-index:18;
-  display:flex;flex-direction:column;gap:6px}
-.chiprow{display:flex;gap:8px;padding:0 12px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.chips{position:absolute;top:calc(var(--safe-top) + 68px);left:0;right:0;z-index:18}
+.chiprow{display:flex;gap:9px;padding:0 14px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .chiprow::-webkit-scrollbar{display:none}
-.subrow{padding-bottom:4px}
-.subchip{height:34px;padding:0 13px;font-size:12px;background:var(--surface);box-shadow:none;border:1px solid var(--line)}
-.subchip.on{background:var(--brand-solid);color:#fff}
-.chip{flex:none;display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:999px;
-  background:var(--surface);box-shadow:none;font-size:13px;font-weight:600;color:var(--ink-2);
-  white-space:nowrap;transition:transform .12s,background .2s,color .2s;border:1px solid var(--line)}
+.chip{flex:none;display:inline-flex;align-items:center;gap:7px;height:42px;padding:0 17px;border-radius:999px;
+  background:var(--surface);box-shadow:var(--shadow);font-size:13.5px;font-weight:700;color:var(--ink);
+  white-space:nowrap;border:none;transition:transform .14s,box-shadow .2s}
 .chip:active{transform:scale(.95)}
 .chip .dot{width:9px;height:9px;border-radius:50%;flex:none}
-.chip.on{background:var(--brand-solid);color:#fff}
-.chip.on .dot{box-shadow:0 0 0 2px var(--bg)}
+.chip.on{background:var(--brand-grad);color:var(--on-brand);box-shadow:var(--glow)}
+.chip.on .dot{box-shadow:0 0 0 2px rgba(255,255,255,.7)}
 .chip .cnt{font-size:11px;opacity:.65;font-weight:700}
 
 /* 위치 배너 */
@@ -98,10 +102,11 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 /* FAB */
 .fab{position:absolute;right:16px;bottom:calc(var(--safe-bottom) + 132px);z-index:30;
   display:flex;align-items:center;gap:8px;height:52px;padding:0 20px 0 16px;border-radius:999px;
-  background:var(--brand-grad);color:#fff;font-weight:600;font-size:15px;box-shadow:0 8px 22px rgba(92,124,224,.32);
-  transition:transform .14s}
+  background:var(--brand-grad);color:var(--on-brand);font-weight:700;font-size:15px;box-shadow:var(--glow);
+  transition:transform .14s,bottom .34s cubic-bezier(.2,.85,.25,1)}
+body.sheet-off .fab{bottom:calc(var(--safe-bottom) + 76px)}
 .fab:active{transform:scale(.94)}
-.fab .ic{width:22px;height:22px;stroke:#fff}
+.fab .ic{width:22px;height:22px;stroke:var(--on-brand)}
 
 /* 검색바 */
 .searchbar{position:absolute;top:calc(var(--safe-top) + 12px);left:12px;right:12px;z-index:40;
@@ -110,15 +115,32 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .searchbar input{flex:1;border:none;background:none;color:var(--ink);font-size:16px;height:42px;outline:none}
 
 /* ============== 바텀시트 ============== */
-.sheet{position:absolute;left:0;right:0;bottom:0;z-index:25;background:var(--surface);
+/* 시트 배경은 살짝 푸른 톤 — 흰 카드가 떠 보이게 */
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:25;background:var(--bg);
   border-radius:var(--r-xl) var(--r-xl) 0 0;box-shadow:var(--shadow-lg);will-change:transform;
   transform:translateY(calc(100% - 116px));transition:transform .38s cubic-bezier(.2,.85,.25,1);
   max-height:94dvh;display:flex;flex-direction:column;touch-action:none}
+.sheet.hidden{transform:translateY(100%)}
 .sheet.peek{transform:translateY(calc(100% - 116px))}
 .sheet.half{transform:translateY(38dvh)}
 .sheet.full{transform:translateY(max(6dvh,var(--safe-top)))}
-.sheet-handle{height:30px;flex:none;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none}
+.sheet-handle{position:relative;height:34px;flex:none;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none}
 .sheet-handle::before{content:"";width:42px;height:5px;border-radius:3px;background:var(--ink-3)}
+/* 시트 내리기(∨) — 손잡이 우측, 44px 터치타깃 */
+.sheet-collapse{position:absolute;right:4px;top:50%;transform:translateY(-50%);
+  width:44px;height:44px;display:flex;align-items:center;justify-content:center;
+  background:none;border:none;color:var(--ink-2);touch-action:manipulation}
+.sheet-collapse .ic{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.sheet-collapse:active{opacity:.5}
+
+/* 완전히 내렸을 때 남는 탭 버튼 */
+.sheet-tab{position:absolute;left:50%;bottom:calc(var(--safe-bottom) + 16px);transform:translateX(-50%);
+  z-index:26;display:none;align-items:center;gap:7px;height:46px;padding:0 20px 0 16px;border-radius:999px;
+  background:var(--surface);color:var(--ink);font-size:14.5px;font-weight:700;
+  box-shadow:var(--shadow-lg);animation:rise .22s both}
+.sheet-tab.on{display:inline-flex}
+.sheet-tab:active{transform:translateX(-50%) scale(.95)}
+.sheet-tab .ic{width:17px;height:17px;fill:none;stroke:var(--brand-ink);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .sheet-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;padding:0 16px calc(24px + var(--safe-bottom))}
 
 /* 목록 헤더 */
@@ -127,7 +149,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .list-head span{font-size:13px;color:var(--ink-2)}
 .sortrow{margin-left:auto;display:flex;gap:4px}
 .sortbtn{font-size:11.5px;padding:4px 10px;border-radius:999px;background:var(--surface-2);color:var(--ink-2)}
-.sortbtn.on{background:var(--brand);color:#fff}
+.sortbtn.on{background:var(--brand-solid);color:#fff}
 .pcard .dist{color:var(--brand-ink);font-weight:600}
 .mcard{background:var(--surface-2);border-radius:var(--r);padding:12px 14px}
 .mcard .mlbl{font-size:12px;color:var(--ink-2)}
@@ -141,16 +163,17 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .gfeat span{color:var(--ink-2)}
 
 /* 장소 카드(목록) */
-.pcard{display:flex;gap:12px;padding:10px;border-radius:var(--r);transition:background .15s}
-.pcard:active{background:var(--surface-2)}
-.pcard .thumb{width:84px;height:84px;border-radius:14px;object-fit:cover;flex:none;background:var(--surface-2)}
-.pcard .meta{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px}
-.pcard .nm{font-size:15px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcard{display:flex;gap:13px;padding:11px;margin-bottom:11px;border-radius:var(--r-lg);
+  background:var(--surface);box-shadow:var(--shadow);transition:transform .14s,box-shadow .2s}
+.pcard:active{transform:scale(.985);box-shadow:var(--shadow-lg)}
+.pcard .thumb{width:82px;height:82px;border-radius:var(--r);object-fit:cover;flex:none;background:var(--surface-2)}
+.pcard .meta{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:4px}
+.pcard .nm{font-size:15.5px;font-weight:700;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pcard .ct{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2)}
-.pcard .ct .dot{width:8px;height:8px;border-radius:50%}
-.pcard .mc{font-size:12.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcard .ct .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.pcard .mc{font-size:12.5px;color:var(--ink-2);line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pcard .rg{font-size:11.5px;color:var(--ink-3)}
-.divider{height:1px;background:var(--line);margin:2px 6px}
+.divider{display:none}
 
 /* ============== 장소 상세 ============== */
 .detail{position:relative;padding-bottom:8px}
@@ -178,12 +201,12 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .kw{font-size:12px;color:var(--ink-2);background:var(--surface-2);padding:5px 10px;border-radius:999px}
 .menu-row{display:flex;justify-content:space-between;font-size:13.5px;padding:7px 2px;border-bottom:1px solid var(--line)}
 .menu-row .pr{color:var(--ink-2)}
-.actions{display:flex;gap:8px;margin:16px 0 6px;position:sticky;bottom:0;background:var(--surface);padding-top:8px}
-.actions::before{content:"";position:absolute;left:0;right:0;top:-18px;height:18px;background:linear-gradient(transparent,var(--surface));pointer-events:none}
-.act{flex:1;height:48px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;gap:6px;
-  font-size:14px;font-weight:700;background:var(--surface-2);color:var(--ink);transition:transform .12s}
+.actions{display:flex;gap:8px;margin:16px 0 6px;position:sticky;bottom:0;background:var(--bg);padding-top:8px}
+.actions::before{content:"";position:absolute;left:0;right:0;top:-18px;height:18px;background:linear-gradient(transparent,var(--bg));pointer-events:none}
+.act{flex:1;height:50px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;gap:6px;
+  font-size:14px;font-weight:700;background:var(--surface);box-shadow:var(--shadow);color:var(--ink);transition:transform .12s}
 .act:active{transform:scale(.96)}
-.act.primary{background:var(--brand-grad);color:#fff}
+.act.primary{background:var(--brand-grad);color:var(--on-brand)}
 .sec-title{font-size:13px;font-weight:700;color:var(--ink-2);margin:18px 0 6px}
 
 /* ============== 오버레이(갤러리/추천) ============== */
@@ -208,7 +231,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 #recommend-input{width:100%;border:1.5px solid var(--line-2);border-radius:var(--r);background:var(--surface);
   color:var(--ink);font-size:15px;padding:14px;outline:none;resize:none;font-family:inherit}
 #recommend-input:focus{border-color:var(--brand)}
-.primary-btn{width:100%;height:52px;border-radius:var(--r);background:var(--brand-grad);color:#fff;
+.primary-btn{width:100%;height:52px;border-radius:var(--r);background:var(--brand-grad);color:var(--on-brand);
   font-size:16px;font-weight:600;margin-top:12px;transition:transform .12s}
 .primary-btn:active{transform:scale(.98)}
 .primary-btn:disabled{opacity:.55}
@@ -266,7 +289,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .region-chip{gap:5px}
 .region-chip .rg-ic{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;
   stroke-linecap:round;stroke-linejoin:round;flex:none}
-.region-chip.on{background:var(--brand-solid);color:#fff;border-color:var(--brand-solid)}
+.region-chip.on,.cat-chip.on{background:var(--brand-grad);color:var(--on-brand)}
+.cat-chip{gap:6px}
+.cat-chip .rg-ic{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.9;flex:none;opacity:.75}
+.cat-chip .rg-x{font-size:15px;line-height:1;margin-left:1px;opacity:.9}
 .region-chip .rg-x{font-size:15px;line-height:1;margin-left:1px;opacity:.9}
 
 /* ===== 지역 드릴다운 오버레이 ===== */
@@ -288,6 +314,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .rgrow-main{flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:15px 15px;border-radius:var(--r);
   background:var(--surface);border:1px solid var(--line);font-size:15px;font-weight:600;color:var(--ink);text-align:left;transition:background .15s}
 .rgrow-main:active{background:var(--surface-2)}
+.rgdot{width:10px;height:10px;border-radius:50%;flex:none}
 .rgrow-main .rgname{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rgrow-main .rgcnt{font-size:12.5px;color:var(--ink-2);font-weight:700;background:var(--surface-2);padding:3px 10px;border-radius:999px;flex:none}
 .rgdrill{width:50px;flex:none;border-radius:var(--r);background:var(--surface-2);color:var(--ink-2);
@@ -297,7 +324,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 /* ===== 내 기록 칩(지역 칩과 동일 톤) ===== */
 .mine-chip{gap:5px}
 .mine-chip .rg-ic{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round;flex:none}
-.mine-chip.on{background:var(--brand-solid);color:#fff;border-color:var(--brand-solid)}
+.mine-chip.on{background:var(--brand-grad);color:var(--on-brand)}
 .mine-chip .rg-x{font-size:15px;line-height:1;margin-left:1px;opacity:.9}
 
 /* ===== 내 기록: 리스트 관리 ===== */

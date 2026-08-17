@@ -28,5 +28,15 @@
 - 세부: 네이버 `category` (한식/일식/양식/베이커리 등)
 - 지역: address 의 시도/시군구
 
+## 4-1) 장소 검색 (로그인 불필요, 공개) — "즐겨찾기 추가"용 ✦ 2026-08-17 확인
+- ✅ `GET https://map.naver.com/p/api/search/instant-search?query={검색어}&coords={위도},{경도}`
+  - 헤더: UA + `Referer: https://map.naver.com/` 만 있으면 됨. 쿠키 불필요.
+  - 응답 `place[]`: `id`/`sid`(장소ID), `title`, `x`(경도), `y`(위도), `ctg`(카테고리), `cid`,
+    `jibunAddress`, `roadAddress`, `shortAddress[]`, `review.count`, `totalScore`, `dist`
+  - `ac[]`: 자동완성 후보. `coords`는 거리(dist) 정렬 기준일 뿐 없어도 동작.
+  - → sid를 얻으면 2)의 pcmap 상세로 사진/메뉴/평점까지 바로 보강 가능. **추가 기능의 검색 경로는 이걸로 확정.**
+- ❌ `GET /p/api/search/allSearch?query=...` : ncaptcha 게이트(`pageId: ncaptcha-all-search-no-result`)로
+  `result.place = null` 반환. 서버에서 쓰기 부적합 → 사용하지 않음.
+
 ## 5) 이미지 핫링크
 - pstatic.net (ldb-phinf=대표, pup-review-phinf/blogfiles=방문자) → 정적 사이트에서 직접 <img src> 로드 가능(레퍼러 제약 거의 없음). 저장공간 부담 없음.

@@ -35,7 +35,7 @@ async function boot() {
   } catch (e) { console.error('데이터 로드 실패', e); PLACES = []; }
   loadStore();
   initMap(); renderChips(); renderMarkers(); renderList();
-  initSheet(); initSearch(); initLocate(); initRegion(); initMine(); initRecommend(); initNearby(); initGuide();
+  initSheet(); initSearch(); initLocate(); initRegion(); initTheme(); initMine(); initRecommend(); initNearby(); initGuide();
 }
 
 /* ---------- 지도 ---------- */
@@ -94,42 +94,24 @@ function renderMarkers() {
 
 /* ---------- 카테고리 칩 ---------- */
 function catCount(k) { return PLACES.filter(p => p.c1 === k && p.map).length; }
-function subCount(k) { return PLACES.filter(p => p.c2 === k && p.map && (!activeCat || p.c1 === activeCat)).length; }
+// 상단은 지역 · 테마 · 내 기록 3개만. 세부 선택은 각자 드릴다운 시트에서.
 function renderChips() {
   const el = $('#chips'); el.innerHTML = '';
-  const row1 = document.createElement('div'); row1.className = 'chiprow';
-  row1.appendChild(makeRegionChip());
-  row1.appendChild(makeMineChip());
-  row1.appendChild(makeChip(null, '전체', null));
-  C.CATS.forEach(c => { if (catCount(c.k) > 0) row1.appendChild(makeChip(c.k, c.label || c.k, c.color)); });
-  el.appendChild(row1);
-  if (activeCat && META.tree && META.tree[activeCat]) {
-    const subs = Object.keys(META.tree[activeCat]).sort((a, b) => META.tree[activeCat][b] - META.tree[activeCat][a]);
-    if (subs.length > 1) {
-      const row2 = document.createElement('div'); row2.className = 'chiprow subrow';
-      row2.appendChild(makeSubChip(null, '전체'));
-      subs.forEach(s => row2.appendChild(makeSubChip(s, s)));
-      el.appendChild(row2);
-    }
-  }
-  if (el.querySelector('.subrow')) { const nb = $('#nearby'); if (nb) nb.hidden = true; }
+  const row = document.createElement('div'); row.className = 'chiprow';
+  row.appendChild(makeRegionChip());
+  row.appendChild(makeCatChip());
+  row.appendChild(makeMineChip());
+  el.appendChild(row);
 }
-function makeChip(key, label, color) {
-  const cnt = key === null ? PLACES.filter(p => p.map).length : catCount(key);
-  const on = activeCat === key;
+function catChipLabel() { return activeSub || (activeCat ? catLabel(activeCat) : '테마'); }
+function makeCatChip() {
+  const on = !!activeCat;
   const b = document.createElement('button');
-  b.className = 'chip' + (on ? ' on' : '');
-  if (on && color) { b.style.background = color; b.style.color = '#fff'; b.style.borderColor = color; }
-  b.innerHTML = (color ? `<span class="dot" style="background:${on ? '#fff' : color}"></span>` : '') + esc(label) + ` <span class="cnt">${cnt}</span>`;
-  b.onclick = () => { activeCat = key; activeSub = null; listLimit = 60; renderChips(); renderMarkers(); renderList(); setSheet('half'); };
-  return b;
-}
-function makeSubChip(key, label) {
-  const on = activeSub === key;
-  const b = document.createElement('button');
-  b.className = 'chip subchip' + (on ? ' on' : '');
-  b.innerHTML = esc(label) + (key ? ` <span class="cnt">${subCount(key)}</span>` : '');
-  b.onclick = () => { activeSub = key; listLimit = 60; renderChips(); renderMarkers(); renderList(); };
+  b.className = 'chip cat-chip' + (on ? ' on' : '');
+  const dot = on ? `<span class="dot" style="background:${catColor(activeCat)}"></span>`
+    : `<svg viewBox="0 0 24 24" class="rg-ic"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>`;
+  b.innerHTML = dot + esc(catChipLabel()) + (on ? ' <span class="rg-x">×</span>' : '');
+  b.onclick = e => { if (on && e.target.closest('.rg-x')) { applyCat(null, null); return; } openTheme(); };
   return b;
 }
 
@@ -152,7 +134,7 @@ function renderList() {
   vis.sort((userLoc && sortMode === 'near') ? (a, b) => distTo(a) - distTo(b) : sortPlaces);
   const shown = vis.slice(0, listLimit);
   const toggle = userLoc ? `<span class="sortrow"><button class="sortbtn${sortMode === 'near' ? ' on' : ''}" data-s="near">가까운 순</button><button class="sortbtn${sortMode === 'reco' ? ' on' : ''}" data-s="reco">추천 순</button></span>` : '';
-  let html = `<div class="list-head"><b>${esc(activeCat ? catLabel(activeCat) : '전체')}</b><span>${vis.length}곳${searchQ ? ` · "${esc(searchQ)}"` : ''}</span>${toggle}</div>`;
+  let html = `<div class="list-head"><b>${esc(activeCat ? catChipLabel() : '전체')}</b><span>${vis.length}곳${searchQ ? ` · "${esc(searchQ)}"` : ''}</span>${toggle}</div>`;
   html += shown.map(cardHTML).join('<div class="divider"></div>');
   if (vis.length > listLimit) html += `<button id="more" class="act" style="margin-top:14px">더 보기 (${vis.length - listLimit}곳)</button>`;
   if (!vis.length) html += `<div style="text-align:center;padding:44px 0;color:var(--ink-3)"><span class="pin" style="width:34px;height:34px;opacity:.35"></span><p style="margin:14px 0 0;font-size:14px;color:var(--ink-2)">조건에 맞는 장소가 없어요</p><p style="margin:4px 0 0;font-size:12.5px">필터를 바꾸거나 지역을 넓혀보세요</p></div>`;
@@ -160,6 +142,7 @@ function renderList() {
   $$('.pcard', body).forEach((el, i) => el.onclick = () => openDetail(shown[i]));
   $$('.sortbtn', body).forEach(b => b.onclick = () => { sortMode = b.dataset.s; listLimit = 60; renderList(); });
   const more = $('#more', body); if (more) more.onclick = () => { listLimit += 60; renderList(); };
+  updateSheetTab();
 }
 
 /* ---------- 장소 상세 ---------- */
@@ -229,22 +212,35 @@ function closeDetail() {
 }
 
 /* ---------- 바텀시트 동작 (실시간 드래그 + 스냅) ---------- */
-const SORDER = ['peek', 'half', 'full']; let sIdx = 0;
+// hidden = 시트를 화면 밖으로 완전히 내리고 하단 탭 버튼만 남기는 상태
+const SORDER = ['hidden', 'peek', 'half', 'full']; let sIdx = 1;
 function setSheet(state) {
-  sIdx = Math.max(0, SORDER.indexOf(state));
+  const i = SORDER.indexOf(state); sIdx = i < 0 ? 1 : i;
   const s = $('#sheet'); if (!s) return;
+  const cur = SORDER[sIdx], off = cur === 'hidden';
   s.style.transition = ''; s.style.transform = '';
-  s.classList.remove('peek', 'half', 'full'); s.classList.add(SORDER[sIdx]);
-  const fab = $('#fab'); if (fab) fab.style.display = (SORDER[sIdx] === 'peek') ? 'flex' : 'none';
+  s.classList.remove('hidden', 'peek', 'half', 'full'); s.classList.add(cur);
+  s.setAttribute('aria-hidden', off ? 'true' : 'false');
+  document.body.classList.toggle('sheet-off', off);
+  const fab = $('#fab'); if (fab) fab.style.display = (cur === 'peek' || off) ? 'flex' : 'none';
+  const tab = $('#sheet-tab'); if (tab) tab.classList.toggle('on', off);
+  updateSheetTab();
+}
+// 탭 버튼 라벨 = 현재 필터에 걸린 장소 수
+function updateSheetTab() {
+  const lbl = $('#sheet-tab-label'); if (!lbl) return;
+  let n = 0; try { n = visiblePlaces().length; } catch (e) {}
+  lbl.textContent = n ? `목록 ${fmtN(n)}곳` : '목록';
 }
 function initSheet() {
   setSheet('peek');
   const sheet = $('#sheet'), handle = $('#sheet-handle'), body = $('#sheet-body');
   const safeTop = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-top')) || 0;
   const winH = () => window.innerHeight;
-  const pos = () => ({ peek: sheet.offsetHeight - 116, half: 0.38 * winH(), full: Math.max(0.06 * winH(), safeTop()) });
+  const pos = () => ({ hidden: sheet.offsetHeight, peek: sheet.offsetHeight - 116, half: 0.38 * winH(), full: Math.max(0.06 * winH(), safeTop()) });
   let pending = false, dragging = false, fromBody = false, startX = 0, startY = 0, baseTY = 0, lastY = 0, lastT = 0, vel = 0;
-  const go = i => setSheet(SORDER[Math.max(0, Math.min(2, i))]);
+  // 손잡이 탭 = peek→half→full→peek 순환 (실수로 숨겨지지 않게 hidden은 제외)
+  const cycle = () => setSheet(sIdx >= 3 ? 'peek' : SORDER[Math.max(1, sIdx) + 1]);
   function down(e, viaBody) {
     pending = true; dragging = false; fromBody = viaBody;
     startX = e.clientX; startY = e.clientY; baseTY = pos()[SORDER[sIdx]];
@@ -267,26 +263,37 @@ function initSheet() {
     if (!dragging) return;
     e.preventDefault();
     const P = pos();
-    const ty = Math.max(P.full, Math.min(P.peek, baseTY + dy));
+    const ty = Math.max(P.full, Math.min(P.hidden, baseTY + dy));
     sheet.style.transform = `translateY(${ty}px)`;
     const now = e.timeStamp || 0;
     if (now > lastT) { vel = (e.clientY - lastY) / (now - lastT); lastY = e.clientY; lastT = now; }
   }
   function up(e) {
-    if (pending && !dragging) { pending = false; if (!fromBody) go((sIdx + 1) % 3); return; }
+    if (pending && !dragging) { pending = false; if (!fromBody) cycle(); return; }
     if (!dragging) return;
     dragging = false; sheet.style.transition = '';
     const P = pos(), ty = baseTY + (e.clientY - startY);
     let target;
-    if (vel > 0.45) target = 'peek';
+    // 아래로 세게 튕기면: peek 아래에서 시작했으면 완전히 내림(hidden), 아니면 peek
+    if (vel > 0.45) target = (ty > P.peek + 24) ? 'hidden' : 'peek';
     else if (vel < -0.45) target = 'full';
     else {
-      const cand = [['full', P.full], ['half', P.half], ['peek', P.peek]];
+      const cand = [['full', P.full], ['half', P.half], ['peek', P.peek], ['hidden', P.hidden]];
       cand.sort((a, b) => Math.abs(ty - a[1]) - Math.abs(ty - b[1]));
       target = cand[0][0];
     }
     setSheet(target);
   }
+  // ∨ 버튼: 어느 단계에서든 한 번에 완전히 내림 (손잡이 드래그/탭과 겹치지 않게 전파 차단)
+  const collapse = $('#sheet-collapse');
+  if (collapse) {
+    collapse.addEventListener('pointerdown', e => e.stopPropagation());
+    collapse.addEventListener('click', e => { e.stopPropagation(); setSheet('hidden'); });
+  }
+  // 하단 탭 버튼: 다시 올림
+  const tab = $('#sheet-tab');
+  if (tab) tab.addEventListener('click', () => setSheet('peek'));
+
   handle.addEventListener('pointerdown', e => down(e, false));
   body.addEventListener('pointerdown', e => down(e, true));
   window.addEventListener('pointermove', move, { passive: false });
@@ -333,6 +340,55 @@ function showMyLocation(la, lo) {
   }).addTo(map);
 }
 
+/* ---------- 테마 드릴다운 (대분류 > 세부) ---------- */
+let themeDrill = '';
+function initTheme() {
+  const cl = $('#theme-close'); if (cl) cl.onclick = () => { $('#theme').hidden = true; };
+}
+function openTheme() {
+  themeDrill = activeCat || '';
+  $('#theme').hidden = false; renderTheme();
+}
+function renderTheme() {
+  const crumb = $('#theme-crumb'), body = $('#theme-body');
+  crumb.innerHTML = ''; body.innerHTML = '';
+  const steps = [['전체 테마', '']];
+  if (themeDrill) steps.push([catLabel(themeDrill), themeDrill]);
+  steps.forEach((st, i) => {
+    const c = document.createElement('button'); c.className = 'crumb'; c.textContent = st[0];
+    c.onclick = () => { themeDrill = st[1]; renderTheme(); };
+    crumb.appendChild(c);
+    if (i < steps.length - 1) { const sep = document.createElement('span'); sep.className = 'crumb-sep'; sep.textContent = '›'; crumb.appendChild(sep); }
+  });
+  const hint = document.createElement('p'); hint.className = 'rg-hint';
+  hint.textContent = themeDrill ? '세부 종류를 누르면 바로 적용돼요.' : '테마를 누르면 바로 적용돼요. › 를 누르면 세부 종류가 나와요.';
+  body.appendChild(hint);
+  if (!themeDrill) {
+    $('#theme-title').textContent = '테마 선택';
+    body.appendChild(rgBtn('전체 보기', PLACES.filter(p => p.map).length, () => applyCat(null, null), null, 'var(--ink-3)'));
+    C.CATS.forEach(c => {
+      const n = catCount(c.k); if (!n) return;
+      const t = (META.tree && META.tree[c.k]) || {};
+      const hasSub = Object.keys(t).length > 1;
+      body.appendChild(rgBtn(c.label || c.k, n, () => applyCat(c.k, null),
+        hasSub ? () => { themeDrill = c.k; renderTheme(); } : null, c.color));
+    });
+  } else {
+    const c = catMap[themeDrill] || {};
+    $('#theme-title').textContent = catLabel(themeDrill);
+    body.appendChild(rgBtn(catLabel(themeDrill) + ' 전체', catCount(themeDrill), () => applyCat(themeDrill, null), null, c.color));
+    const t = (META.tree && META.tree[themeDrill]) || {};
+    Object.keys(t).sort((a, b) => t[b] - t[a]).forEach(s =>
+      body.appendChild(rgBtn(s, t[s], () => applyCat(themeDrill, s), null, c.color)));
+  }
+}
+function applyCat(c1, c2) {
+  activeCat = c1; activeSub = c2; listLimit = 60;
+  $('#theme').hidden = true;
+  renderChips(); renderMarkers(); renderList();
+  setSheet('half');
+}
+
 /* ---------- 지역 드릴다운 (도 > 시군구 > 동) ---------- */
 let regionDrill = { sido: '', gu: '' };
 function shortRg(s) { return String(s || '').replace('특별자치도', '').replace('특별자치시', '').replace('특별시', '').replace('광역시', ''); }
@@ -352,10 +408,11 @@ function openRegion() {
   regionDrill = { sido: (activeRegion && activeRegion.sido) || '', gu: (activeRegion && activeRegion.gu) || '' };
   $('#region').hidden = false; renderRegion();
 }
-function rgBtn(label, count, onApply, onDrill) {
+function rgBtn(label, count, onApply, onDrill, dotColor) {
   const row = document.createElement('div'); row.className = 'rgrow2';
   const main = document.createElement('button'); main.className = 'rgrow-main';
-  main.innerHTML = `<span class="rgname">${esc(label)}</span><span class="rgcnt">${count}</span>`;
+  main.innerHTML = (dotColor ? `<span class="rgdot" style="background:${dotColor}"></span>` : '') +
+    `<span class="rgname">${esc(label)}</span><span class="rgcnt">${count}</span>`;
   main.onclick = onApply; row.appendChild(main);
   if (onDrill) {
     const d = document.createElement('button'); d.className = 'rgdrill'; d.setAttribute('aria-label', label + ' 하위 지역 보기'); d.textContent = '›';
