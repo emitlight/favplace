@@ -10,6 +10,24 @@
     - `bookmarkMismatchInfo.details`: ["AVAILABLE"|"UNAVAILABLE"|"GEOMETRY"]  → UNAVAILABLE=폐업/삭제(5건)
     - `folderMappings`: 소속 폴더 (다중 가능)
 
+## 1-1) 즐겨찾기 **쓰기** API ✦ 2026-08-17 HAR 캡처로 확인
+
+- ✅ **수정(이름·메모·폴더이동)**: `PATCH https://pages.map.naver.com/save-widget/api/maps-bookmark/bookmarks/{bookmarkId}?cv=v1.4.7&t={epoch_ms}`
+  - 헤더: `content-type: application/json`, `origin: https://pages.map.naver.com`,
+    `referer: https://pages.map.naver.com/save-pages/...`, 로그인 쿠키. (커스텀 인증 헤더 없음)
+  - 바디: `{"displayName":"", "memo":"", "url":"", "mapping":{"addFolderIds":[3401176],"removeFolderIds":[253423448]}, "token":"<32B base64>", "cv":"v1.4.7"}`
+  - 응답 200: `{"displayName","memo","url","mapping":{"removedFolderIds":[],"addedMappings":[{folderId,creationTime}],"nonExistentFolderIds":[],"skippedFolderIds":[],"updateDate","bookmarkRemoved":false}}`
+  - ⚠️ **경로 파라미터는 `sid`가 아니라 `bookmarkId`** (별개의 값). 예: bookmarkId 4290071632 ↔ sid 72690307.
+    sid→bookmarkId 매핑은 sync/`/p/api/bookmark` 응답의 `bookmark.bookmarkId` 로 만들어야 함.
+- ❓ **`token` 출처 미확인**. 캡처한 HAR 전체(21요청)에서 이 문자열은 PATCH 바디에 **딱 1번**만 등장 →
+  어떤 API 응답에도 없음. save-widget 페이지 HTML/JS 번들에서 나오는 것으로 추정. **한 번 더 캡처 필요.**
+- ❓ **삭제 API 미포착** (캡처 때 폴더이동만 수행). 응답에 `bookmarkRemoved` 필드가 있는 걸 보면
+  모든 폴더에서 빼면 삭제될 가능성 있음 — 확인 전까지 추측 금지.
+- **읽기 보조**: `GET /save-widget/api/maps-bookmark/sync?t={ms}` = `/p/api/bookmark` 과 같은 전체 동기화 페이로드.
+  `GET /save-widget/api/maps-bookmark/folders?t={ms}`, `GET /save-pages/api/maps-bookmark/v3/folder-mappings?q=bookmark-ids={id}`.
+- **폴더 ID**(2026-08-17): 내 장소(기본) 3401176 · 한강진 213974309 · 새리스트만들기 253423448 ·
+  novy dum 219696274 · 글램핑바베큐 249986982 · 북카페등 187582117 · 삼척 245767501.
+
 ## 2) 장소 상세/사진 (로그인 불필요, 공개)
 - `GET https://pcmap.place.naver.com/place/{sid}/home`  (타입 무관 동작) → HTML 내 `window.__APOLLO_STATE__` 파싱
 - 주요 엔티티:
