@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-<link rel="stylesheet" href="./css/style.css?v=27" />
+<link rel="stylesheet" href="./css/style.css?v=28" />
 </head>
 <body>
 
@@ -39,15 +39,19 @@
 <main id="app" class="app" hidden>
   <div id="map" class="map"></div>
 
-  <!-- 상단 플로팅 바 -->
+  <!-- 상단: 검색 필드 + 프로필 (시안 1b) -->
   <header class="topbar">
-    <div class="brand"><span class="pin sm"></span><span class="brand-name">하영의 지도</span></div>
-    <div class="top-actions">
-      <button id="btn-search" class="icon-btn" aria-label="검색"><svg viewBox="0 0 24 24" class="ic"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
-      <button id="btn-locate" class="icon-btn" aria-label="내 위치"><svg viewBox="0 0 24 24" class="ic"><circle cx="12" cy="12" r="7"/><line x1="12" y1="1.5" x2="12" y2="4.5"/><line x1="12" y1="19.5" x2="12" y2="22.5"/><line x1="1.5" y1="12" x2="4.5" y2="12"/><line x1="19.5" y1="12" x2="22.5" y2="12"/><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/></svg></button>
-      <button id="btn-info" class="icon-btn" aria-label="가이드와 현황"><svg viewBox="0 0 24 24" class="ic"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11.5" x2="12" y2="16.5"/><circle cx="12" cy="7.8" r="1" fill="currentColor" stroke="none"/></svg></button>
-    </div>
+    <button id="btn-search" class="searchfield" aria-label="검색">
+      <svg viewBox="0 0 24 24" class="ic"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.6" y2="16.6"/></svg>
+      <span id="search-label">어디로 가볼까요</span>
+    </button>
+    <button id="btn-info" class="avatar-btn" aria-label="가이드와 현황">하영</button>
   </header>
+
+  <!-- 내 위치 (지도 위 원형 버튼) -->
+  <button id="btn-locate" class="mapbtn" aria-label="내 위치">
+    <svg viewBox="0 0 24 24" class="ic"><circle cx="12" cy="12" r="7"/><line x1="12" y1="1.8" x2="12" y2="4.6"/><line x1="12" y1="19.4" x2="12" y2="22.2"/><line x1="1.8" y1="12" x2="4.6" y2="12"/><line x1="19.4" y1="12" x2="22.2" y2="12"/><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/></svg>
+  </button>
 
   <!-- 카테고리 칩 -->
   <nav id="chips" class="chips" aria-label="카테고리 필터"></nav>
@@ -88,18 +92,55 @@
   </button>
 </main>
 
-<!-- 추천 코스 오버레이 -->
-<div id="recommend" class="overlay" hidden>
-  <header class="overlay-bar">
-    <strong>AI 추천 코스</strong>
-    <button id="recommend-close" class="icon-btn" aria-label="닫기">×</button>
-  </header>
-  <div class="recommend-body">
-    <p class="recommend-help">지금 기분과 하고 싶은 걸 적어주세요. 저장한 장소들로 코스를 짜드려요.</p>
-    <div class="recommend-examples" id="recommend-examples"></div>
-    <textarea id="recommend-input" rows="3" placeholder="예) 오늘 부산인데 대게 먹고 바다 보이는 카페 가고 싶어"></textarea>
-    <button id="recommend-go" class="primary-btn">코스 만들기</button>
-    <div id="recommend-result" class="recommend-result"></div>
+<!-- ===== AI 코스 · 입력 (시안 2a) ===== -->
+<div id="course-input" class="course-screen" hidden>
+  <div class="cs-top">
+    <button class="cs-back" id="ci-back" aria-label="닫기">
+      <svg viewBox="0 0 24 24" class="ic" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M14 6l-6 6 6 6"/></svg>
+    </button>
+    <span class="cs-kicker">AI COURSE</span>
+  </div>
+  <div class="cs-scroll">
+    <h1 class="cs-title">오늘 뭐 하고<br />싶으세요?</h1>
+    <p class="cs-sub" id="ci-sub"></p>
+
+    <div class="prompt-card">
+      <textarea id="ci-input" rows="2" placeholder="오늘 청담인데 저녁 먹고 디저트까지 가고 싶어" aria-label="원하는 코스"></textarea>
+      <div class="prompt-foot">
+        <div class="prompt-geo"><span class="d"></span><span id="ci-geo">현재 위치 확인 전</span></div>
+        <button class="prompt-go" id="ci-go">코스 만들기</button>
+      </div>
+      <p class="prompt-err" id="ci-err" hidden></p>
+    </div>
+
+    <div class="cs-sec">
+      <p class="cs-lbl">이렇게 물어보세요</p>
+      <div class="ex-wrap" id="ci-examples"></div>
+    </div>
+
+    <div class="cs-sec">
+      <p class="cs-lbl">최근 만든 코스</p>
+      <div id="ci-recent"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== AI 코스 · 결과 (시안 2b) ===== -->
+<div id="course-result" class="course-screen" hidden>
+  <div class="cr-map"><div id="cr-map-el" style="width:100%;height:100%"></div></div>
+  <div class="cr-scrim"></div>
+  <div class="cs-top">
+    <button class="cs-back solid" id="cr-back" aria-label="뒤로">
+      <svg viewBox="0 0 24 24" class="ic" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M14 6l-6 6 6 6"/></svg>
+    </button>
+    <button class="cs-redo" id="cr-redo">다시 만들기</button>
+  </div>
+  <div class="cr-body" id="cr-body"></div>
+  <div class="cr-actions">
+    <button class="cr-ico" id="cr-pin" aria-label="지도에서 보기">
+      <svg viewBox="0 0 24 24" class="ic" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-6.5-5-6.5-9.4A6.5 6.5 0 0 1 12 4a6.5 6.5 0 0 1 6.5 6.6C18.5 15 12 20 12 20z"/><circle cx="12" cy="10.4" r="2.2"/></svg>
+    </button>
+    <button class="cr-cta" id="cr-cta">네이버 지도로 길찾기</button>
   </div>
 </div>
 
@@ -143,7 +184,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script src="./js/config.js?v=27"></script>
-<script src="./js/app.js?v=27"></script>
+<script src="./js/config.js?v=28"></script>
+<script src="./js/app.js?v=28"></script>
 </body>
 </html>
