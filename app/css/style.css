@@ -552,3 +552,86 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .mapbtn{bottom:calc(var(--safe-bottom) + 140px)}
 body[data-snap="peek"] .fab{bottom:calc(var(--safe-bottom) + 136px)}
 body[data-snap="peek"] .mapbtn{bottom:calc(var(--safe-bottom) + 200px)}
+
+/* ==================================================================
+   반응형 — 태블릿/데스크톱(웹)
+   모바일(<768px)은 위의 시안 1b 레이아웃 그대로.
+   768px 이상: 좌측 고정 패널(목록/상세) + 우측 지도 2단 레이아웃.
+   ================================================================== */
+@media (min-width:768px){
+  :root{ --pane:360px; --panetop:120px }
+
+  .app::before{display:none}
+  .map{left:var(--pane)}
+
+  /* 바텀시트 -> 좌측 고정 패널 */
+  .sheet{left:0;right:auto;top:0;bottom:0;width:var(--pane);height:100dvh;max-height:none;
+    border-radius:0;box-shadow:1px 0 0 var(--line),6px 0 28px rgba(40,90,140,.09);
+    transform:none !important;transition:none;touch-action:auto;
+    padding-top:calc(var(--safe-top) + var(--panetop))}
+  .sheet-handle,.sheet-tab,.sheet-collapse{display:none !important}
+  .sheet-body{touch-action:auto}
+
+  /* 상단 컨트롤은 패널 안으로 */
+  .topbar{top:calc(var(--safe-top) + 16px);left:16px;right:auto;width:calc(var(--pane) - 32px);z-index:28}
+  .searchfield{box-shadow:none;background:var(--surface-2);border:1px solid var(--line-3)}
+  .avatar-btn{box-shadow:none;background:var(--surface-2);border:1px solid var(--line-3)}
+  .chips{top:calc(var(--safe-top) + 74px);left:0;right:auto;width:var(--pane);z-index:28}
+  .searchbar{left:16px;width:calc(var(--pane) - 32px);right:auto;top:calc(var(--safe-top) + 16px)}
+
+  /* 지도 위 떠 있는 버튼은 지도 영역 기준 */
+  .fab{right:24px;bottom:calc(var(--safe-bottom) + 24px) !important;display:flex !important}
+  .mapbtn{right:24px;bottom:calc(var(--safe-bottom) + 92px) !important;display:flex !important}
+  .nearby{left:calc(var(--pane) + 24px);right:24px;top:calc(var(--safe-top) + 20px)}
+
+  /* 오버레이(지역·테마·내 기록·가이드) -> 가운데 모달 카드 */
+  /* inset+margin:auto 로 중앙 정렬 — rise 애니메이션이 transform을 덮어쓰므로 transform은 쓰지 않는다 */
+  .overlay{left:0;right:0;top:0;bottom:0;margin:auto;
+    width:min(560px,92vw);height:min(720px,86vh);border-radius:24px;overflow:hidden;
+    box-shadow:0 30px 80px rgba(20,50,80,.28);border:1px solid var(--line)}
+  .overlay-bar{padding:18px 20px 14px}
+
+  /* AI 코스 입력(2a) — 가운데 정렬 */
+  .cs-scroll{max-width:600px;margin:0 auto;width:100%;padding-top:calc(var(--safe-top) + 110px)}
+  .cs-top{max-width:600px;margin:0 auto;left:0;right:0;padding:0 24px}
+
+  /* AI 코스 결과(2b) — 좌: 지도 / 우: 코스 */
+  .cr-map{top:0;left:0;right:auto;width:calc(100% - 460px);height:100dvh}
+  .cr-scrim{display:none}
+  .cr-body{left:auto;right:0;width:460px;background:var(--bg-course);
+    padding:calc(var(--safe-top) + 118px) 0 calc(120px + var(--safe-bottom));
+    box-shadow:-6px 0 28px rgba(40,90,140,.1);pointer-events:auto}
+  .cr-actions{left:auto;right:0;width:460px}
+  .cs-top{z-index:7}
+  #course-result .cs-top{max-width:none;margin:0;left:24px;right:24px;padding:0}
+}
+
+/* 넓은 화면: 패널을 조금 더 넓게 + 리스트 여백 확대 */
+@media (min-width:1200px){
+  :root{ --pane:420px }
+  .cr-map{width:calc(100% - 520px)}
+  .cr-body,.cr-actions{width:520px}
+}
+
+/* 아주 넓은 화면: 지도가 과하게 늘어나지 않도록 앱 폭 제한 */
+@media (min-width:1800px){
+  .app{max-width:1800px;left:50%;transform:translateX(-50%);
+    box-shadow:0 0 0 1px var(--line)}
+}
+
+/* 마우스 환경: hover 상태 제공 (터치 기기에는 적용 안 함) */
+@media (hover:hover) and (pointer:fine){
+  .pcard{cursor:pointer}
+  .pcard:hover{background:rgba(20,50,80,.035)}
+  .chip{cursor:pointer}
+  .chip:hover{border-color:var(--line-2)}
+  .chip.on:hover{opacity:.92}
+  .ex:hover,.rc-row:hover,.rgrow-main:hover{background:rgba(20,50,80,.04)}
+  .cr-stop{cursor:pointer}
+  .cr-stop:hover{background:rgba(20,50,80,.03)}
+  .fab:hover,.cr-cta:hover,.prompt-go:hover{filter:brightness(1.06)}
+  .list-refresh:hover{text-decoration:underline}
+}
+
+/* 키보드 접근성 */
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:6px}

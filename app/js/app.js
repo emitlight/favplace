@@ -36,7 +36,47 @@ async function boot() {
   } catch (e) { console.error('데이터 로드 실패', e); PLACES = []; }
   loadStore();
   initMap(); renderChips(); renderMarkers(); renderList();
-  initSheet(); initSearch(); initLocate(); initRegion(); initTheme(); initMine(); initRecommend(); initNearby(); initGuide();
+  initSheet(); initSearch(); initLocate(); initRegion(); initTheme(); initMine(); initRecommend(); initNearby(); initGuide(); initResponsive();
+  applyScreenParam();
+}
+
+/* ---------- 반응형: 폭이 바뀌면 지도 크기 재계산 ---------- */
+function invalidateMaps() {
+  try { if (map) map.invalidateSize(); } catch (e) {}
+  try { if (courseMap) courseMap.invalidateSize(); } catch (e) {}
+}
+function initResponsive() {
+  let t;
+  const on = () => { clearTimeout(t); t = setTimeout(invalidateMaps, 160); };
+  window.addEventListener('resize', on);
+  window.addEventListener('orientationchange', on);
+  // 모바일<->데스크톱 전환 시에는 시트 상태도 기본으로 되돌린다
+  const mqChange = () => { setSheet(isDesktop() ? 'half' : 'peek'); setTimeout(invalidateMaps, 220); };
+  if (DESKTOP_MQ.addEventListener) DESKTOP_MQ.addEventListener('change', mqChange);
+  else if (DESKTOP_MQ.addListener) DESKTOP_MQ.addListener(mqChange);
+}
+
+/* ---------- 화면 딥링크 (?screen=) — 목업 카탈로그/스크린샷용 ---------- */
+const SCREENS = ['home','list','list-full','detail','region','theme','mine','guide','search','course','course-result'];
+function applyScreenParam() {
+  const m = /[?&]screen=([\w-]+)/.exec(location.search);
+  if (!m) return;
+  const key = m[1];
+  const pick = () => PLACES.find(p => p.map && p.ph.length && p.mc) || PLACES.find(p => p.map);
+  setTimeout(() => {
+    try {
+      if (key === 'list') setSheet('half');
+      else if (key === 'list-full') setSheet('full');
+      else if (key === 'detail') { const p = pick(); if (p) openDetail(p); }
+      else if (key === 'region') openRegion();
+      else if (key === 'theme') openTheme();
+      else if (key === 'mine') openMine();
+      else if (key === 'guide') openGuide();
+      else if (key === 'search') { $('#btn-search').click(); $('#search-input').value = '베이커리'; $('#search-input').dispatchEvent(new Event('input')); }
+      else if (key === 'course') openCourseInput('');
+      else if (key === 'course-result') openCourseInput('강릉에서 바다 보이는 카페랑 밥집');
+    } catch (e) { console.warn('screen param 처리 실패', e); }
+  }, 350);
 }
 
 /* ---------- 지도 ---------- */
@@ -260,6 +300,9 @@ function closeDetail() {
   setSheet('peek');
 }
 
+const DESKTOP_MQ = window.matchMedia('(min-width:768px)');
+function isDesktop() { return DESKTOP_MQ.matches; }
+
 /* ---------- 바텀시트 동작 (실시간 드래그 + 스냅) ---------- */
 // hidden = 시트를 화면 밖으로 완전히 내리고 하단 탭 버튼만 남기는 상태
 const SORDER = ['hidden', 'peek', 'half', 'full']; let sIdx = 1;
@@ -284,7 +327,7 @@ function updateSheetTab() {
   lbl.textContent = n ? `목록 ${fmtN(n)}곳` : '목록';
 }
 function initSheet() {
-  setSheet('peek');
+  setSheet(isDesktop() ? 'half' : 'peek');
   const sheet = $('#sheet'), handle = $('#sheet-handle'), body = $('#sheet-body');
   const safeTop = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-top')) || 0;
   const winH = () => window.innerHeight;
@@ -346,8 +389,11 @@ function initSheet() {
   const tab = $('#sheet-tab');
   if (tab) tab.addEventListener('click', () => setSheet('peek'));
 
-  handle.addEventListener('pointerdown', e => down(e, false));
-  body.addEventListener('pointerdown', e => down(e, true));
+  // 768px 이상에서는 시트가 좌측 고정 패널이라 드래그 스냅을 붙이지 않는다
+  if (!isDesktop()) {
+    handle.addEventListener('pointerdown', e => down(e, false));
+    body.addEventListener('pointerdown', e => down(e, true));
+  }
   window.addEventListener('pointermove', move, { passive: false });
   window.addEventListener('pointerup', up);
   window.addEventListener('pointercancel', () => { pending = false; if (dragging) { dragging = false; setSheet(SORDER[sIdx]); } });

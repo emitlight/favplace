@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"><style>body{margin:0;background:#EDF1F6;font-family:Pretendard,-apple-system,system-ui,sans-serif}a{color:oklch(0.58 0.15 255);text-decoration:none}a:hover{color:oklch(0.48 0.15 255)}.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08)}.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 22px}.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#16202B;color:#fff;border-radius:4px;text-decoration:none}.dv-tname{font:600 13px/1.2 Pretendard,system-ui;color:#16202B}.dv-opts{display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start}.dv-opt{flex:none;display:flex;flex-direction:column;gap:10px}.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(20,50,80,.09);color:#16202B;border-radius:5px;text-decoration:none}.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11.5px/1.3 Pretendard,system-ui;color:rgba(20,40,60,.55)}.phone{width:390px;height:844px;border-radius:44px;background:#fff;overflow:hidden;position:relative;box-shadow:0 28px 70px rgba(30,60,100,.18),0 2px 6px rgba(30,60,100,.08)}.dv-opt:target .dv-oid{background:oklch(0.58 0.15 255);color:#fff}.dv-next{margin:24px 0 0;font:12px/1.6 Pretendard,system-ui;color:rgba(20,40,60,.5)}</style></helmet>
+
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">AI 추천 코스 — <a class="dv-oid" href="#1c">1c</a>의 에디토리얼 구조, 블루 팔레트</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="2a">
+<div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>코스 만들기 · 입력</div>
+<div class="phone" style="background:#F3F7FB">
+  <div style="position:absolute;top:0;left:0;right:0;height:54px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 24px 6px;font:600 14px Pretendard;color:#16232F">
+    <span>9:41</span><span style="letter-spacing:2px;opacity:.7">▮▮▮ ᯤ ▰</span>
+  </div>
+
+  <div style="position:absolute;top:64px;left:24px;right:24px;display:flex;align-items:center;justify-content:space-between">
+    <div style="width:40px;height:40px;border-radius:50%;border:1px solid rgba(20,50,80,.13);display:flex;align-items:center;justify-content:center">
+      <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:#16232F;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M14 6l-6 6 6 6"></path></svg>
+    </div>
+    <span style="font:500 11.5px Pretendard;letter-spacing:.16em;color:#8FA1B4">AI COURSE</span>
+  </div>
+
+  <div style="position:absolute;top:132px;left:24px;right:24px;display:flex;flex-direction:column;gap:10px">
+    <div style="font:700 32px Pretendard;letter-spacing:-.035em;line-height:1.15;color:#0F1C29">오늘 뭐 하고<br />싶으세요?</div>
+    <div style="font:400 13.5px/1.55 Pretendard;color:#7C8CA0;text-wrap:pretty">저장한 726곳 중에서 지금 위치와 기분에 맞는 코스를 짜드려요.</div>
+  </div>
+
+  <div style="position:absolute;top:268px;left:24px;right:24px;background:#fff;border-radius:20px;border:1px solid rgba(20,50,80,.07);box-shadow:0 10px 30px rgba(46,96,145,.08);padding:18px 18px 14px">
+    <div style="font:400 15px/1.5 Pretendard;color:#16232F">오늘 청담인데 저녁 먹고<br />디저트까지 가고 싶어<span style="display:inline-block;width:1.5px;height:17px;background:oklch(0.58 0.15 255);vertical-align:-3px;margin-left:2px"></span></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:13px;border-top:1px solid rgba(20,50,80,.07)">
+      <div style="display:flex;align-items:center;gap:6px;font:600 12px Pretendard;color:#7C8CA0">
+        <span style="width:7px;height:7px;border-radius:50%;background:oklch(0.70 0.14 155)"></span>현재 위치 · 청담동
+      </div>
+      <div style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:16px;background:oklch(0.58 0.15 255);box-shadow:0 8px 20px oklch(0.58 0.15 255 / .3);font:700 13px Pretendard;color:#fff">코스 만들기</div>
+    </div>
+  </div>
+
+  <div style="position:absolute;top:452px;left:24px;right:24px;display:flex;flex-direction:column;gap:12px">
+    <div style="font:500 10.5px Pretendard;letter-spacing:.16em;color:#8FA1B4">이렇게 물어보세요</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      <span style="padding:9px 14px;border-radius:18px;background:#fff;border:1px solid rgba(20,50,80,.08);font:500 12.5px Pretendard;color:#3E4E5E;white-space:nowrap">비 오는 날 조용한 카페</span>
+      <span style="padding:9px 14px;border-radius:18px;background:#fff;border:1px solid rgba(20,50,80,.08);font:500 12.5px Pretendard;color:#3E4E5E;white-space:nowrap">부모님 모시고 한식</span>
+      <span style="padding:9px 14px;border-radius:18px;background:#fff;border:1px solid rgba(20,50,80,.08);font:500 12.5px Pretendard;color:#3E4E5E;white-space:nowrap">강릉 1박 코스</span>
+      <span style="padding:9px 14px;border-radius:18px;background:#fff;border:1px solid rgba(20,50,80,.08);font:500 12.5px Pretendard;color:#3E4E5E;white-space:nowrap">아직 안 가본 디저트</span>
+    </div>
+  </div>
+
+  <div style="position:absolute;top:588px;left:0;right:0;padding:0 24px;display:flex;flex-direction:column">
+    <div style="font:500 10.5px Pretendard;letter-spacing:.16em;color:#8FA1B4;padding-bottom:12px">최근 만든 코스</div>
+    <div style="display:flex;align-items:center;gap:14px;padding:15px 0;border-top:1px solid rgba(20,50,80,.1)">
+      <div style="width:38px;height:38px;border-radius:50%;background:oklch(0.58 0.15 255 / .1);display:flex;align-items:center;justify-content:center;font:700 12.5px Pretendard;color:oklch(0.52 0.15 255)">3</div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+        <div style="font:700 14.5px Pretendard;letter-spacing:-.02em;color:#0F1C29">제주 서귀포 카페 투어</div>
+        <div style="font:500 11.5px Pretendard;color:#8FA1B4">8월 3일 · 12.6km</div>
+      </div>
+      <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:#B4C0CD;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M10 6l6 6-6 6"></path></svg>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;padding:15px 0;border-top:1px solid rgba(20,50,80,.1)">
+      <div style="width:38px;height:38px;border-radius:50%;background:oklch(0.58 0.15 255 / .1);display:flex;align-items:center;justify-content:center;font:700 12.5px Pretendard;color:oklch(0.52 0.15 255)">4</div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+        <div style="font:700 14.5px Pretendard;letter-spacing:-.02em;color:#0F1C29">용인 처인구 주말 나들이</div>
+        <div style="font:500 11.5px Pretendard;color:#8FA1B4">7월 27일 · 9.1km</div>
+      </div>
+      <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:#B4C0CD;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M10 6l6 6-6 6"></path></svg>
+    </div>
+  </div>
+
+  <div style="position:absolute;left:0;right:0;bottom:0;height:34px;display:flex;align-items:center;justify-content:center"><div style="width:132px;height:5px;border-radius:3px;background:#16232F;opacity:.85"></div></div>
+</div>
+</div>
+
+<div class="dv-opt" id="2b">
+<div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>코스 결과 · 지도 + 순서</div>
+<div class="phone" style="background:#F3F7FB">
+  <div style="position:absolute;top:0;left:0;right:0;height:396px;overflow:hidden;background:#E3EBF3">
+    <sc-for list="{{ tilesD }}" as="t" hint-placeholder-count="6"><div style="position:absolute;width:256px;height:256px;left:{{ t.l }}px;top:{{ t.t }}px;background-size:cover;background-image:url({{ t.src }});filter:grayscale(1) brightness(1.02) sepia(.28) hue-rotate(178deg) saturate(2.1)"></div></sc-for>
+    <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(243,247,251,.96) 0,rgba(243,247,251,.08) 22%,rgba(243,247,251,.06) 62%,rgba(243,247,251,1) 100%)"></div>
+  </div>
+
+  <div style="position:absolute;top:0;left:0;right:0;height:54px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 24px 6px;font:600 14px Pretendard;color:#16232F">
+    <span>9:41</span><span style="letter-spacing:2px;opacity:.7">▮▮▮ ᯤ ▰</span>
+  </div>
+
+  <div style="position:absolute;top:64px;left:24px;right:24px;display:flex;align-items:center;justify-content:space-between">
+    <div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.9);box-shadow:0 4px 14px rgba(46,96,145,.12);display:flex;align-items:center;justify-content:center">
+      <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:#16232F;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M14 6l-6 6 6 6"></path></svg>
+    </div>
+    <div style="display:flex;align-items:center;gap:7px;height:34px;padding:0 14px;border-radius:17px;background:rgba(255,255,255,.9);box-shadow:0 4px 14px rgba(46,96,145,.12);font:600 12px Pretendard;color:#3E4E5E;white-space:nowrap">다시 만들기</div>
+  </div>
+
+  <div style="position:absolute;left:56px;top:150px;display:flex;align-items:center;gap:8px">
+    <div style="width:40px;height:40px;border-radius:50%;background:oklch(0.58 0.15 255);color:#fff;display:flex;align-items:center;justify-content:center;font:700 13.5px Pretendard;box-shadow:0 8px 18px oklch(0.58 0.15 255 / .38)">1</div>
+    <span style="font:700 12px Pretendard;color:#0F1C29;background:rgba(255,255,255,.92);padding:5px 10px;border-radius:12px;white-space:nowrap">밍글스</span>
+  </div>
+  <div style="position:absolute;left:168px;top:236px;display:flex;align-items:center;gap:8px">
+    <div style="width:40px;height:40px;border-radius:50%;background:oklch(0.58 0.15 255);color:#fff;display:flex;align-items:center;justify-content:center;font:700 13.5px Pretendard;box-shadow:0 8px 18px oklch(0.58 0.15 255 / .38)">2</div>
+    <span style="font:700 12px Pretendard;color:#0F1C29;background:rgba(255,255,255,.92);padding:5px 10px;border-radius:12px;white-space:nowrap">해피해피케이크</span>
+  </div>
+  <div style="position:absolute;left:36px;top:284px;display:flex;align-items:center;gap:8px">
+    <div style="width:40px;height:40px;border-radius:50%;background:#fff;border:1.5px solid oklch(0.58 0.15 255);color:oklch(0.52 0.15 255);display:flex;align-items:center;justify-content:center;font:700 13.5px Pretendard">3</div>
+    <span style="font:700 12px Pretendard;color:#0F1C29;background:rgba(255,255,255,.92);padding:5px 10px;border-radius:12px;white-space:nowrap">벙커컴퍼니</span>
+  </div>
+  <div style="position:absolute;left:96px;top:172px;width:88px;height:2px;background:repeating-linear-gradient(90deg,oklch(0.58 0.15 255) 0 5px,transparent 5px 10px);transform:rotate(37deg);transform-origin:left center"></div>
+  <div style="position:absolute;left:188px;top:256px;width:140px;height:2px;background:repeating-linear-gradient(90deg,oklch(0.58 0.15 255) 0 5px,transparent 5px 10px);transform:rotate(160deg);transform-origin:left center"></div>
+
+  <div style="position:absolute;top:330px;left:24px;right:24px;display:flex;flex-direction:column;gap:7px">
+    <div style="font:500 10.5px Pretendard;letter-spacing:.16em;color:#8FA1B4">청담 · 오늘 저녁</div>
+    <div style="font:700 26px Pretendard;letter-spacing:-.03em;color:#0F1C29;line-height:1.15">저녁 한 상, 그리고 디저트</div>
+    <div style="font:500 12.5px Pretendard;color:#7C8CA0">3곳 · 2.4km · 약 3시간 · 모두 도보</div>
+  </div>
+
+  <div style="position:absolute;top:470px;left:0;right:0;padding:0 24px;display:flex;flex-direction:column">
+    <div style="display:flex;gap:14px;padding:15px 0;border-top:1px solid rgba(20,50,80,.11)">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:3px">
+        <div style="width:22px;height:22px;border-radius:50%;background:oklch(0.58 0.15 255);color:#fff;display:flex;align-items:center;justify-content:center;font:700 11px Pretendard">1</div>
+        <div style="flex:1;width:1px;background:rgba(20,50,80,.14)"></div>
+      </div>
+      <img src="https://ldb-phinf.pstatic.net/20200911_263/1599792125441WUQCF_JPEG/tjk3-qUcCKYYG0JPH6xF2wHn.jpg" alt="" style="width:66px;height:80px;object-fit:cover;flex:none;border-radius:3px" />
+      <div style="flex:1;display:flex;flex-direction:column;gap:5px;padding-top:2px">
+        <div style="font:500 10.5px Pretendard;letter-spacing:.13em;color:#8FA1B4">18:30 — 한식 · 청담동</div>
+        <div style="font:700 16.5px Pretendard;letter-spacing:-.025em;color:#0F1C29">밍글스</div>
+        <div style="font:400 12.5px/1.45 Pretendard;color:#7C8CA0;text-wrap:pretty">3스타가 보장하는 최상의 미식 경험</div>
+        <div style="font:600 11.5px Pretendard;color:#16232F">★ 4.62 · 리뷰 777 · 예약 권장</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:14px;padding:15px 0;border-top:1px solid rgba(20,50,80,.11)">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:3px">
+        <div style="width:22px;height:22px;border-radius:50%;background:oklch(0.58 0.15 255);color:#fff;display:flex;align-items:center;justify-content:center;font:700 11px Pretendard">2</div>
+        <div style="flex:1;width:1px;background:rgba(20,50,80,.14)"></div>
+      </div>
+      <img src="https://ldb-phinf.pstatic.net/20190225_109/1551100684561fA3Q9_JPEG/SSn2tsE3rkt3HFAPfbAKHtDT.jpg" alt="" style="width:66px;height:80px;object-fit:cover;flex:none;border-radius:3px" />
+      <div style="flex:1;display:flex;flex-direction:column;gap:5px;padding-top:2px">
+        <div style="font:500 10.5px Pretendard;letter-spacing:.13em;color:#8FA1B4">20:20 — 케이크 · 도보 9분</div>
+        <div style="font:700 16.5px Pretendard;letter-spacing:-.025em;color:#0F1C29">해피해피케이크</div>
+        <div style="font:400 12.5px/1.45 Pretendard;color:#7C8CA0;text-wrap:pretty">딸기자몽이 선사하는 딸기위크의 특별함</div>
+        <div style="font:600 11.5px Pretendard;color:#16232F">★ 4.41 · 리뷰 418 · 21시 마감</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="position:absolute;left:0;right:0;bottom:0;height:104px;background:rgba(243,247,251,.94);border-top:1px solid rgba(20,50,80,.08);padding:16px 24px 0;display:flex;gap:10px">
+    <div style="width:52px;height:52px;border-radius:26px;border:1px solid rgba(20,50,80,.13);display:flex;align-items:center;justify-content:center">
+      <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:none;stroke:#3E4E5E;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M12 20s-6.5-5-6.5-9.4A6.5 6.5 0 0 1 12 4a6.5 6.5 0 0 1 6.5 6.6C18.5 15 12 20 12 20z"></path><circle cx="12" cy="10.4" r="2.2"></circle></svg>
+    </div>
+    <div style="flex:1;height:52px;border-radius:26px;background:oklch(0.58 0.15 255);box-shadow:0 10px 24px oklch(0.58 0.15 255 / .32);display:flex;align-items:center;justify-content:center;font:700 15px Pretendard;color:#fff;white-space:nowrap">네이버 지도로 길찾기</div>
+  </div>
+</div>
+</div>
+
+</div>
+<p class="dv-next">이어서 — "<a class="dv-oid" href="#2b">2b</a>에 코스 편집(순서 바꾸기) 넣어줘" · "<a class="dv-oid" href="#1b">1b</a> 톤으로 장소 상세도" · "<a class="dv-oid" href="#2a">2a</a> 생성 중 로딩 화면"</p>
+</section>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">지도 홈 — 세 방향</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a">
+<div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>에어리 · 사진 핀 + 카드 캐러셀</div>
+<div class="phone">
+  <div style="position:absolute;inset:0;overflow:hidden;background:#E6EDF4">
+    <sc-for list="{{ tilesA }}" as="t" hint-placeholder-count="6"><div style="position:absolute;width:256px;height:256px;left:{{ t.l }}px;top:{{ t.t }}px;background-size:cover;background-image:url({{ t.src }})"></div></sc-for>
+    <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(240,245,250,.9) 0,rgba(240,245,250,0) 26%,rgba(240,245,250,0) 46%,rgba(240,245,250,.92) 72%)"></div>
+  </div>
+
+  <div style="position:absolute;top:0;left:0;right:0;height:54px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 24px 6px;font:600 14px Pretendard;color:#16202B">
+    <span>9:41</span><span style="letter-spacing:2px;opacity:.75">▮▮▮ ᯤ ▰</span>
+  </div>
+
+  <div style="position:absolute;top:64px;left:16px;right:16px;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:center;gap:10px;height:52px;padding:0 8px 0 18px;background:#fff;border-radius:26px;box-shadow:0 8px 24px rgba(46,96,145,.12)">
+      <svg viewBox="0 0 24 24" style="width:19px;height:19px;fill:none;stroke:#95A5B6;stroke-width:2;stroke-linecap:round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.6" y2="16.6"></line></svg>
+      <span style="flex:1;font:400 15px Pretendard;color:#98A6B5">장소 · 지역 · 메뉴 검색</span>
+      <div style="width:36px;height:36px;border-radius:50%;background:#F1F5FA;display:flex;align-items:center;justify-content:center">
+        <svg viewBox="0 0 24 24" style="width:17px;height:17px;fill:none;stroke:#5A6B7C;stroke-width:2;stroke-linecap:round"><line x1="5" y1="8" x2="19" y2="8"></line><line x1="5" y1="16" x2="19" y2="16"></line><circle cx="10" cy="8" r="2.4" fill="#fff"></circle><circle cx="15" cy="16" r="2.4" fill="#fff"></circle></svg>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;white-space:nowrap">
+      <span style="padding:9px 16px;border-radius:20px;background:oklch(0.58 0.15 255);color:#fff;font:600 13px Pretendard;box-shadow:0 6px 16px oklch(0.58 0.15 255 / .32)">전체 726</span>
+      <span style="padding:9px 15px;border-radius:20px;background:rgba(255,255,255,.92);color:#3E4E5E;font:500 13px Pretendard;box-shadow:0 4px 12px rgba(46,96,145,.1)">카페 195</span>
+      <span style="padding:9px 15px;border-radius:20px;background:rgba(255,255,255,.92);color:#3E4E5E;font:500 13px Pretendard;box-shadow:0 4px 12px rgba(46,96,145,.1)">음식점 258</span>
+      <span style="padding:9px 15px;border-radius:20px;background:rgba(255,255,255,.92);color:#3E4E5E;font:500 13px Pretendard;box-shadow:0 4px 12px rgba(46,96,145,.1)">문화</span>
+    </div>
+  </div>
+
+  <div style="position:absolute;left:56px;top:246px;display:flex;flex-direction:column;align-items:center">
+    <div style="width:58px;height:58px;border-radius:50% 50% 50% 8px;transform:rotate(45deg);background:#fff;box-shadow:0 10px 22px rgba(40,90,140,.24);display:flex;align-items:center;justify-content:center">
+      <img src="https://ldb-phinf.pstatic.net/20260526_44/1779786048354tmPB0_JPEG/1-2.jpg" alt="" style="width:46px;height:46px;border-radius:50%;object-fit:cover;transform:rotate(-45deg)" />
+    </div>
+  </div>
+  <div style="position:absolute;left:212px;top:196px">
+    <div style="width:58px;height:58px;border-radius:50% 50% 50% 8px;transform:rotate(45deg);background:#fff;box-shadow:0 10px 22px rgba(40,90,140,.24);display:flex;align-items:center;justify-content:center">
+      <img src="https://ldb-phinf.pstatic.net/20200911_263/1599792125441WUQCF_JPEG/tjk3-qUcCKYYG0JPH6xF2wHn.jpg" alt="" style="width:46px;height:46px;border-radius:50%;object-fit:cover;transform:rotate(-45deg)" />
+    </div>
+  </div>
+  <div style="position:absolute;left:290px;top:300px">
+    <div style="width:52px;height:52px;border-radius:50% 50% 50% 8px;transform:rotate(45deg);background:#fff;box-shadow:0 10px 22px rgba(40,90,140,.24);display:flex;align-items:center;justify-content:center">
+      <img src="https://ldb-phinf.pstatic.net/20240727_147/1722048769310791Pk_JPEG/1722048297100.jpg" alt="" style="width:41px;height:41px;border-radius:50%;object-fit:cover;transform:rotate(-45deg)" />
+    </div>
+  </div>
+  <div style="position:absolute;left:120px;top:352px">
+    <div style="width:48px;height:48px;border-radius:24px;background:rgba(255,255,255,.95);box-shadow:0 8px 18px rgba(40,90,140,.2);display:flex;align-items:center;justify-content:center;font:700 14px Pretendard;color:oklch(0.55 0.16 255)">+9</div>
+  </div>
+  <div style="position:absolute;left:176px;top:322px;width:16px;height:16px;border-radius:50%;background:oklch(0.58 0.15 255);border:3px solid #fff;box-shadow:0 0 0 8px oklch(0.58 0.15 255 / .16)"></div>
+
+  <div style="position:absolute;right:16px;top:430px;width:46px;height:46px;border-radius:50%;background:#fff;box-shadow:0 8px 20px rgba(46,96,145,.16);display:flex;align-items:center;justify-content:center">
+    <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:none;stroke:oklch(0.58 0.15 255);stroke-width:2;stroke-linecap:round"><circle cx="12" cy="12" r="7"></circle><line x1="12" y1="1.8" x2="12" y2="4.6"></line><line x1="12" y1="19.4" x2="12" y2="22.2"></line><line x1="1.8" y1="12" x2="4.6" y2="12"></line><line x1="19.4" y1="12" x2="22.2" y2="12"></line><circle cx="12" cy="12" r="2.6" fill="oklch(0.58 0.15 255)" stroke="none"></circle></svg>
+  </div>
+
+  <div style="position:absolute;left:0;right:0;bottom:96px;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:center;gap:6px;padding:0 20px;font:600 13px Pretendard;color:#3E4E5E">
+      <span style="width:6px;height:6px;border-radius:50%;background:oklch(0.70 0.14 155)"></span>내 주변 12곳 · 강남구 신사동
+    </div>
+    <div style="display:flex;gap:12px;padding:0 20px 6px;overflow:hidden">
+      <div style="flex:none;width:196px;background:#fff;border-radius:22px;padding:10px;box-shadow:0 12px 30px rgba(46,96,145,.14)">
+        <img src="https://ldb-phinf.pstatic.net/20260526_44/1779786048354tmPB0_JPEG/1-2.jpg" alt="" style="width:100%;height:106px;border-radius:15px;object-fit:cover;display:block" />
+        <div style="padding:11px 6px 5px;display:flex;flex-direction:column;gap:5px">
+          <div style="font:600 15px Pretendard;color:#16202B;letter-spacing:-.01em">카페 노티드</div>
+          <div style="font:400 12px Pretendard;color:#8C9BAA">카페 · 커피 · 신사동</div>
+          <div style="display:flex;align-items:center;gap:7px;font:600 12px Pretendard;color:#3E4E5E">
+            <span style="color:oklch(0.72 0.13 75)">★ 4.44</span><span style="color:#C3CDD8">|</span><span style="color:#8C9BAA;font-weight:500">320m</span>
+          </div>
+        </div>
+      </div>
+      <div style="flex:none;width:196px;background:#fff;border-radius:22px;padding:10px;box-shadow:0 12px 30px rgba(46,96,145,.14)">
+        <img src="https://ldb-phinf.pstatic.net/20241210_180/1733840572357hGnaY_JPEG/IMG_5986.jpeg" alt="" style="width:100%;height:106px;border-radius:15px;object-fit:cover;display:block" />
+        <div style="padding:11px 6px 5px;display:flex;flex-direction:column;gap:5px">
+          <div style="font:600 15px Pretendard;color:#16202B;letter-spacing:-.01em">트키 도산</div>
+          <div style="font:400 12px Pretendard;color:#8C9BAA">카페 · 케이크 · 신사동</div>
+          <div style="display:flex;align-items:center;gap:7px;font:600 12px Pretendard;color:#3E4E5E">
+            <span style="color:oklch(0.72 0.13 75)">★ 4.31</span><span style="color:#C3CDD8">|</span><span style="color:#8C9BAA;font-weight:500">540m</span>
+          </div>
+        </div>
+      </div>
+      <div style="flex:none;width:120px;background:#fff;border-radius:22px;padding:10px;box-shadow:0 12px 30px rgba(46,96,145,.14)">
+        <img src="https://ldb-phinf.pstatic.net/20260305_220/1772704628427dSkWI_JPEG/IMG_8311.JPG" alt="" style="width:100%;height:106px;border-radius:15px;object-fit:cover;display:block" />
+      </div>
+    </div>
+  </div>
+
+  <div style="position:absolute;left:0;right:0;bottom:0;height:92px;background:rgba(255,255,255,.94);border-top:1px solid rgba(20,50,80,.06);display:flex;align-items:flex-start;justify-content:space-around;padding:14px 26px 0">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:5px;font:600 10px Pretendard;color:oklch(0.58 0.15 255)"><svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"></path></svg>지도</div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:5px;font:500 10px Pretendard;color:#9DAAB8"><svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><rect x="4" y="4" width="7" height="7" rx="2"></rect><rect x="13" y="4" width="7" height="7" rx="2"></rect><rect x="4" y="13" width="7" height="7" rx="2"></rect><rect x="13" y="13" width="7" height="7" rx="2"></rect></svg>갤러리</div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:5px;margin-top:-26px">
+      <div style="width:56px;height:56px;border-radius:50%;background:oklch(0.58 0.15 255);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 26px oklch(0.58 0.15 255 / .4)">
+        <svg viewBox="0 0 24 24" style="width:24px;height:24px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"></path><circle cx="12" cy="12" r="3.2"></circle></svg>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:5px;font:500 10px Pretendard;color:#9DAAB8"><svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><path d="M5 5h14M5 12h14M5 19h9"></path></svg>리스트</div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:5px;font:500 10px Pretendard;color:#9DAAB8"><svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><circle cx="12" cy="8.5" r="3.6"></circle><path d="M5 20c1.6-3.6 4.2-5.4 7-5.4s5.4 1.8 7 5.4"></path></svg>내 기록</div>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="1b">
+<div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>지도 우선 · 미니멀 시트 리스트</div>
+<div class="phone">
+  <div style="position:absolute;inset:0;overflow:hidden;background:#E6EDF4">
+    <sc-for list="{{ tilesB }}" as="t" hint-placeholder-count="6"><div style="position:absolute;width:256px;height:256px;left:{{ t.l }}px;top:{{ t.t }}px;background-size:cover;background-image:url({{ t.src }})"></div></sc-for>
+    <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(238,243,248,.86) 0,rgba(238,243,248,0) 22%)"></div>
+  </div>
+
+  <div style="position:absolute;top:0;left:0;right:0;height:54px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 24px 6px;font:600 14px Pretendard;color:#16202B">
+    <span>9:41</span><span style="letter-spacing:2px;opacity:.75">▮▮▮ ᯤ ▰</span>
+  </div>
+
+  <div style="position:absolute;top:62px;left:16px;right:16px;display:flex;align-items:center;gap:10px">
+    <div style="flex:1;display:flex;align-items:center;gap:9px;height:46px;padding:0 16px;background:rgba(255,255,255,.96);border-radius:23px;box-shadow:0 6px 18px rgba(46,96,145,.1);white-space:nowrap">
+      <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:#9AA8B6;stroke-width:2;stroke-linecap:round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.6" y2="16.6"></line></svg>
+      <span style="font:400 14.5px Pretendard;color:#9AA8B6">어디로 가볼까요</span>
+    </div>
+    <div style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.96);box-shadow:0 6px 18px rgba(46,96,145,.1);display:flex;align-items:center;justify-content:center;font:700 13px Pretendard;color:#3E4E5E">하영</div>
+  </div>
+
+  <div style="position:absolute;top:122px;left:0;right:0;display:flex;gap:7px;padding:0 16px;white-space:nowrap">
+    <span style="padding:7px 14px;border-radius:18px;background:#16202B;color:#fff;font:600 12.5px Pretendard">가까운 순</span>
+    <span style="padding:7px 14px;border-radius:18px;background:rgba(255,255,255,.9);color:#5A6B7C;font:500 12.5px Pretendard;border:1px solid rgba(20,50,80,.07)">카페</span>
+    <span style="padding:7px 14px;border-radius:18px;background:rgba(255,255,255,.9);color:#5A6B7C;font:500 12.5px Pretendard;border:1px solid rgba(20,50,80,.07)">음식점</span>
+    <span style="padding:7px 14px;border-radius:18px;background:rgba(255,255,255,.9);color:#5A6B7C;font:500 12.5px Pretendard;border:1px solid rgba(20,50,80,.07)">미방문</span>
+  </div>
+
+  <div style="position:absolute;left:64px;top:210px;display:flex;align-items:center;gap:7px;height:36px;padding:0 14px 0 10px;background:#fff;border-radius:18px;white-space:nowrap;box-shadow:0 8px 18px rgba(40,90,140,.18)">
+    <span style="width:9px;height:9px;border-radius:50%;background:oklch(0.72 0.13 55)"></span><span style="font:600 12.5px Pretendard;color:#16202B">신사동 24</span>
+  </div>
+  <div style="position:absolute;left:196px;top:274px;display:flex;align-items:center;gap:7px;height:36px;padding:0 14px 0 10px;background:#fff;border-radius:18px;white-space:nowrap;box-shadow:0 8px 18px rgba(40,90,140,.18)">
+    <span style="width:9px;height:9px;border-radius:50%;background:oklch(0.66 0.15 25)"></span><span style="font:600 12.5px Pretendard;color:#16202B">청담동 11</span>
+  </div>
+  <div style="position:absolute;left:104px;top:340px;display:flex;align-items:center;gap:7px;height:36px;padding:0 14px 0 10px;background:oklch(0.58 0.15 255);border-radius:18px;white-space:nowrap;box-shadow:0 10px 22px oklch(0.58 0.15 255 / .34)">
+    <span style="width:9px;height:9px;border-radius:50%;background:#fff"></span><span style="font:600 12.5px Pretendard;color:#fff">역삼동 18</span>
+  </div>
+  <div style="position:absolute;left:262px;top:196px;width:14px;height:14px;border-radius:50%;background:#16202B;border:3px solid #fff;box-shadow:0 4px 10px rgba(0,0,0,.2)"></div>
+
+  <div style="position:absolute;left:0;right:0;bottom:0;height:452px;background:#fff;border-radius:30px 30px 0 0;box-shadow:0 -14px 40px rgba(40,90,140,.14);padding:10px 0 0">
+    <div style="width:38px;height:4px;border-radius:2px;background:#DCE4EC;margin:0 auto 14px"></div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 22px 14px">
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <span style="font:700 19px Pretendard;color:#16202B;letter-spacing:-.02em">강남구</span>
+        <span style="font:500 13px Pretendard;color:#9AA8B6">저장 69곳</span>
+      </div>
+      <span style="font:600 12.5px Pretendard;color:oklch(0.58 0.15 255)">지도 새로고침</span>
+    </div>
+    <div style="display:flex;flex-direction:column">
+      <div style="display:flex;gap:14px;padding:14px 22px;border-top:1px solid rgba(20,50,80,.06)">
+        <img src="https://ldb-phinf.pstatic.net/20200911_263/1599792125441WUQCF_JPEG/tjk3-qUcCKYYG0JPH6xF2wHn.jpg" alt="" style="width:66px;height:66px;border-radius:18px;object-fit:cover;flex:none" />
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px;justify-content:center">
+          <div style="display:flex;align-items:center;gap:7px"><span style="font:600 15.5px Pretendard;color:#16202B;letter-spacing:-.01em">밍글스</span><span style="font:600 10.5px Pretendard;color:oklch(0.66 0.15 25);background:oklch(0.66 0.15 25 / .1);padding:2.5px 7px;border-radius:8px">한식</span></div>
+          <div style="font:400 12.5px Pretendard;color:#8C9BAA">3스타가 보장하는 최상의 미식 경험</div>
+          <div style="font:500 12px Pretendard;color:#5A6B7C"><span style="color:oklch(0.72 0.13 75);font-weight:600">★ 4.62</span> · 청담동 · 1.2km</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;padding:14px 22px;border-top:1px solid rgba(20,50,80,.06)">
+        <img src="https://ldb-phinf.pstatic.net/20230807_262/1691412291757V88QY_PNG/%BD%BA%C5%A9%B8%B0%BC%A6_2023-08-07_%BF%C0%C8%C4_9.44.20.png" alt="" style="width:66px;height:66px;border-radius:18px;object-fit:cover;flex:none" />
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px;justify-content:center">
+          <div style="display:flex;align-items:center;gap:7px"><span style="font:600 15.5px Pretendard;color:#16202B;letter-spacing:-.01em">벙커컴퍼니 압구정점</span><span style="font:600 10.5px Pretendard;color:oklch(0.72 0.13 55);background:oklch(0.72 0.13 55 / .13);padding:2.5px 7px;border-radius:8px">디저트</span></div>
+          <div style="font:400 12.5px Pretendard;color:#8C9BAA">깊이 있는 에스프레소의 매력</div>
+          <div style="font:500 12px Pretendard;color:#5A6B7C"><span style="color:oklch(0.72 0.13 75);font-weight:600">★ 4.58</span> · 신사동 · 700m</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;padding:14px 22px;border-top:1px solid rgba(20,50,80,.06)">
+        <img src="https://ldb-phinf.pstatic.net/20260128_295/1769566005696UDjkX_JPEG/%B0%AD%B3%B2.jpg" alt="" style="width:66px;height:66px;border-radius:18px;object-fit:cover;flex:none" />
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px;justify-content:center">
+          <div style="display:flex;align-items:center;gap:7px"><span style="font:600 15.5px Pretendard;color:#16202B;letter-spacing:-.01em">빌즈 강남</span><span style="font:600 10.5px Pretendard;color:oklch(0.66 0.15 25);background:oklch(0.66 0.15 25 / .1);padding:2.5px 7px;border-radius:8px">양식</span></div>
+          <div style="font:400 12.5px Pretendard;color:#8C9BAA">고급 인테리어와 어우러진 미식의 경험</div>
+          <div style="font:500 12px Pretendard;color:#5A6B7C"><span style="color:oklch(0.72 0.13 75);font-weight:600">★ 4.39</span> · 역삼동 · 2.1km</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;padding:14px 22px;border-top:1px solid rgba(20,50,80,.06)">
+        <img src="https://ldb-phinf.pstatic.net/20240727_147/1722048769310791Pk_JPEG/1722048297100.jpg" alt="" style="width:66px;height:66px;border-radius:18px;object-fit:cover;flex:none" />
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px;justify-content:center">
+          <div style="display:flex;align-items:center;gap:7px"><span style="font:600 15.5px Pretendard;color:#16202B;letter-spacing:-.01em">허머스키친</span><span style="font:600 10.5px Pretendard;color:oklch(0.66 0.15 25);background:oklch(0.66 0.15 25 / .1);padding:2.5px 7px;border-radius:8px">한식</span></div>
+          <div style="font:400 12.5px Pretendard;color:#8C9BAA">코엑스에서 즐기는 색다른 미식 여행</div>
+          <div style="font:500 12px Pretendard;color:#5A6B7C"><span style="color:oklch(0.72 0.13 75);font-weight:600">★ 4.47</span> · 삼성동 · 3.4km</div>
+        </div>
+      </div>
+    </div>
+    <div style="position:absolute;left:0;right:0;bottom:0;height:34px;display:flex;align-items:center;justify-content:center"><div style="width:132px;height:5px;border-radius:3px;background:#16202B;opacity:.85"></div></div>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="1c">
+<div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>에디토리얼 · 모노톤 지도 + 코스</div>
+<div class="phone" style="background:#F6F4F1">
+  <div style="position:absolute;inset:0;overflow:hidden;background:#EDEAE5">
+    <sc-for list="{{ tilesC }}" as="t" hint-placeholder-count="6"><div style="position:absolute;width:256px;height:256px;left:{{ t.l }}px;top:{{ t.t }}px;background-size:cover;background-image:url({{ t.src }});filter:grayscale(1) contrast(.92) sepia(.22) brightness(1.04)"></div></sc-for>
+    <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(246,244,241,.95) 0,rgba(246,244,241,.1) 30%,rgba(246,244,241,.05) 40%,rgba(246,244,241,.97) 66%)"></div>
+  </div>
+
+  <div style="position:absolute;top:0;left:0;right:0;height:54px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 24px 6px;font:600 14px Pretendard;color:#2B2723">
+    <span>9:41</span><span style="letter-spacing:2px;opacity:.7">▮▮▮ ᯤ ▰</span>
+  </div>
+
+  <div style="position:absolute;top:66px;left:24px;right:24px;display:flex;align-items:flex-end;justify-content:space-between">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <span style="font:500 11.5px Pretendard;letter-spacing:.16em;color:#A2988B">2026 · 8 · 17 강남</span>
+      <span style="font:700 30px Pretendard;letter-spacing:-.035em;color:#231F1B;line-height:1">오늘, 어디 갈까</span>
+    </div>
+    <div style="width:42px;height:42px;border-radius:50%;border:1px solid rgba(40,32,24,.14);display:flex;align-items:center;justify-content:center">
+      <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:#3B342C;stroke-width:1.8;stroke-linecap:round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.6" y2="16.6"></line></svg>
+    </div>
+  </div>
+
+  <div style="position:absolute;top:168px;left:24px;right:24px;display:flex;gap:18px;font:500 13px Pretendard;color:#A2988B;border-bottom:1px solid rgba(40,32,24,.1);padding-bottom:10px">
+    <span style="color:#231F1B;font-weight:700;border-bottom:2px solid #231F1B;padding-bottom:10px;margin-bottom:-11px">근처</span><span>저장순</span><span>미방문</span><span>코스</span>
+  </div>
+
+  <div style="position:absolute;left:44px;top:238px;width:44px;height:44px;border-radius:50%;background:#231F1B;color:#F6F4F1;display:flex;align-items:center;justify-content:center;font:700 14px Pretendard">1</div>
+  <div style="position:absolute;left:150px;top:288px;width:44px;height:44px;border-radius:50%;background:#231F1B;color:#F6F4F1;display:flex;align-items:center;justify-content:center;font:700 14px Pretendard">2</div>
+  <div style="position:absolute;left:268px;top:250px;width:44px;height:44px;border-radius:50%;background:#F6F4F1;border:1.5px solid #231F1B;color:#231F1B;display:flex;align-items:center;justify-content:center;font:700 14px Pretendard">3</div>
+  <div style="position:absolute;left:88px;top:260px;width:62px;height:2px;background:repeating-linear-gradient(90deg,#231F1B 0 5px,transparent 5px 10px);transform:rotate(24deg);transform-origin:left center"></div>
+  <div style="position:absolute;left:194px;top:310px;width:76px;height:2px;background:repeating-linear-gradient(90deg,#231F1B 0 5px,transparent 5px 10px);transform:rotate(-20deg);transform-origin:left center"></div>
+
+  <div style="position:absolute;left:24px;right:24px;top:392px;display:flex;align-items:center;gap:12px;padding:14px 16px;background:#231F1B;border-radius:18px">
+    <span style="font:700 13px Pretendard;color:#F6F4F1;letter-spacing:-.01em">추천 코스 · 청담 저녁 3곳</span>
+    <span style="font:500 12px Pretendard;color:rgba(246,244,241,.6);margin-left:auto">2.4km · 3시간</span>
+  </div>
+
+  <div style="position:absolute;left:0;right:0;bottom:88px;padding:0 24px;display:flex;flex-direction:column">
+    <div style="display:flex;gap:14px;padding:16px 0;border-top:1px solid rgba(40,32,24,.12)">
+      <img src="https://ldb-phinf.pstatic.net/20200323_219/1584941644184Vg3oN_JPEG/aqamwRjz-lMFNmVo2cAhxl1w.jpg" alt="" style="width:72px;height:88px;object-fit:cover;flex:none;border-radius:2px" />
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px;padding-top:2px">
+        <div style="font:500 10.5px Pretendard;letter-spacing:.14em;color:#A2988B">01 — 양식 · 신사동</div>
+        <div style="font:700 17px Pretendard;letter-spacing:-.025em;color:#231F1B">오스테리아 꼬또 압구정점</div>
+        <div style="font:400 12.5px/1.45 Pretendard;color:#7A7167;text-wrap:pretty">기념일을 더욱 특별하게, 레터링 케이크</div>
+        <div style="font:600 11.5px Pretendard;color:#231F1B">★ 4.29 · 리뷰 2,135 · 도보 6분</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:14px;padding:16px 0;border-top:1px solid rgba(40,32,24,.12)">
+      <img src="https://ldb-phinf.pstatic.net/20190225_109/1551100684561fA3Q9_JPEG/SSn2tsE3rkt3HFAPfbAKHtDT.jpg" alt="" style="width:72px;height:88px;object-fit:cover;flex:none;border-radius:2px" />
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px;padding-top:2px">
+        <div style="font:500 10.5px Pretendard;letter-spacing:.14em;color:#A2988B">02 — 케이크 · 청담동</div>
+        <div style="font:700 17px Pretendard;letter-spacing:-.025em;color:#231F1B">해피해피케이크</div>
+        <div style="font:400 12.5px/1.45 Pretendard;color:#7A7167;text-wrap:pretty">딸기자몽이 선사하는 딸기위크의 특별함</div>
+        <div style="font:600 11.5px Pretendard;color:#231F1B">★ 4.41 · 리뷰 418 · 도보 9분</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="position:absolute;left:0;right:0;bottom:0;height:84px;background:#F6F4F1;border-top:1px solid rgba(40,32,24,.1);display:flex;align-items:flex-start;justify-content:space-between;padding:16px 40px 0;font:600 11px Pretendard;color:#A2988B">
+    <span style="color:#231F1B">지도</span><span>갤러리</span><span>코스</span><span>기록</span>
+  </div>
+</div>
+</div>
+
+</div>
+<p class="dv-next">이렇게 이어가면 좋아요 — "<a class="dv-oid" href="#1b">1b</a> 시트에 <a class="dv-oid" href="#1a">1a</a>의 사진 핀 얹어줘" · "<a class="dv-oid" href="#1c">1c</a> 색만 파랗게" · "고른 방향으로 장소 상세·AI 코스까지"</p>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  tiles(z, cx, cy, ox, oy, style) {
+    const n = Math.pow(2, z);
+    const xt = Math.floor((cx + 180) / 360 * n);
+    const lat = cy * Math.PI / 180;
+    const yt = Math.floor((1 - Math.log(Math.tan(lat) + 1 / Math.cos(lat)) / Math.PI) / 2 * n);
+    const out = [];
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 2; j++) {
+      out.push({
+        src: `https://basemaps.cartocdn.com/${style}/${z}/${xt + i}/${yt + j}@2x.png`,
+        l: 195 + i * 256 - 128 + ox,
+        t: 300 + j * 256 - 128 + oy
+      });
+    }
+    return out;
+  }
+  renderVals() {
+    return {
+      tilesA: this.tiles(14, 127.0383, 37.5242, 0, 0, 'light_all'),
+      tilesB: this.tiles(13, 127.0400, 37.5100, 0, -40, 'light_all'),
+      tilesC: this.tiles(14, 127.0430, 37.5230, 0, 20, 'light_nolabels'),
+      tilesD: this.tiles(15, 127.0455, 37.5240, 0, -60, 'light_nolabels')
+    };
+  }
+}
+</script>
+</body>
+</html>
