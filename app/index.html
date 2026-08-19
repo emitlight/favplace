@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-<link rel="stylesheet" href="./css/style.css?v=31" />
+<link rel="stylesheet" href="./css/style.css?v=33" />
 </head>
 <body>
 
@@ -153,6 +153,15 @@
   <div id="guide-body" class="recommend-body"></div>
 </div>
 
+<!-- 네이버 원본 관리(가져오기 · 폴더 · 삭제) -->
+<div id="sync" class="overlay" hidden>
+  <header class="overlay-bar">
+    <strong>네이버 원본 관리</strong>
+    <button id="sync-close" class="icon-btn" aria-label="닫기">×</button>
+  </header>
+  <div id="sync-body" class="region-body"></div>
+</div>
+
 <!-- 내 기록(방문·메모·리스트) 오버레이 -->
 <div id="mine" class="overlay" hidden>
   <header class="overlay-bar">
@@ -184,7 +193,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script src="./js/config.js?v=31"></script>
-<script src="./js/app.js?v=31"></script>
+<script src="./js/config.js?v=33"></script>
+<script src="./js/app.js?v=33"></script>
 </body>
 </html>

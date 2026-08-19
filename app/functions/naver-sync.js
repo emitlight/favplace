@@ -93,6 +93,19 @@ export async function onRequestGet({ request, env }) {
     if (action === "folders") {
       return j({ ok: true, folders: folderList(await fetchSync(env.NAVER_COOKIE)) });
     }
+    if (action === "snapshot") {
+      // 네이버에 저장된 "지금 이 순간"의 즐겨찾기 전체 — 앱이 로컬 places.json 과 대조하는 용도
+      const d = await fetchSync(env.NAVER_COOKIE);
+      const { byId } = indexBookmarks(d);
+      return j({
+        ok: true,
+        fetchedAt: Date.now(),
+        folders: folderList(d),
+        bookmarks: Object.values(byId).map(b => ({
+          bookmarkId: b.bookmarkId, sid: b.sid, name: b.name, memo: b.memo || "", folderIds: b.folderIds,
+        })),
+      });
+    }
     if (action === "resolve") {
       const sids = (url.searchParams.get("sids") || "").split(",").map(s => s.trim()).filter(Boolean);
       if (!sids.length) return j({ error: "sids 파라미터 필요 (쉼표 구분)" }, 400);
@@ -104,7 +117,7 @@ export async function onRequestGet({ request, env }) {
   } catch (e) {
     return j({ error: String(e.message || e) }, 502);
   }
-  return j({ error: "지원하지 않는 action", allowed: ["ping", "folders", "resolve"] }, 400);
+  return j({ error: "지원하지 않는 action", allowed: ["ping", "folders", "resolve", "snapshot"] }, 400);
 }
 
 /* ---------- POST: 쓰기 ---------- */

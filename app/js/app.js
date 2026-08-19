@@ -36,7 +36,7 @@ async function boot() {
   } catch (e) { console.error('데이터 로드 실패', e); PLACES = []; }
   loadStore();
   initMap(); renderChips(); renderMarkers(); renderList();
-  initSheet(); initSearch(); initLocate(); initRegion(); initTheme(); initMine(); initRecommend(); initNearby(); initGuide(); initResponsive();
+  initSheet(); initSearch(); initLocate(); initRegion(); initTheme(); initMine(); initRecommend(); initNearby(); initGuide(); initSync(); initResponsive();
   applyScreenParam();
 }
 
@@ -473,7 +473,7 @@ function renderTheme() {
     C.CATS.forEach(c => {
       const n = catCount(c.k); if (!n) return;
       const t = (META.tree && META.tree[c.k]) || {};
-      const hasSub = Object.keys(t).length > 1;
+      const hasSub = Object.keys(t).length >= 1;
       body.appendChild(rgBtn(c.label || c.k, n, () => applyCat(c.k, null),
         hasSub ? () => { themeDrill = c.k; renderTheme(); } : null, c.color));
     });
@@ -692,6 +692,7 @@ function renderMine() {
   const note = document.createElement('p'); note.className = 'rg-note'; note.style.cssText = 'text-align:left;margin-top:14px;line-height:1.5';
   note.textContent = '방문·메모·리스트는 이 기기에 저장돼요. 다른 기기로 옮기려면 내보내기로 백업하고 가져오기 하세요.';
   body.appendChild(note);
+  appendSyncEntry(body);
 }
 function applyMine(m) {
   activeMine = m; $('#mine').hidden = true; listLimit = 60;
@@ -743,6 +744,23 @@ function detailMineHTML(p) {
     <div id="m-tags" class="mine-tags"></div>
   </div>`;
 }
+// 내 기록 화면 맨 아래 — 네이버 원본 관리 진입
+function appendSyncEntry(body) {
+  const t = document.createElement('div');
+  t.className = 'sec-title'; t.style.margin = '24px 4px 8px';
+  t.textContent = '네이버 원본';
+  body.appendChild(t);
+  const b = document.createElement('button');
+  b.className = 'rgrow-main'; b.style.width = '100%';
+  b.innerHTML = '<span class="rgname">네이버 즐겨찾기 가져오기 · 폴더 · 삭제</span><span class="rgcnt">›</span>';
+  b.onclick = openSync;
+  body.appendChild(b);
+  const h = document.createElement('p');
+  h.className = 'rg-hint'; h.style.marginTop = '8px';
+  h.textContent = '네이버에 저장된 원본을 지금 상태로 가져와 비교하고, 폴더에서 빼거나 삭제할 수 있어요.';
+  body.appendChild(h);
+}
+
 function renderMineTags(p) {
   const el = $('#m-tags'); if (!el) return;
   const inLists = Store.lists.filter(l => l.ids.includes(String(p.id)));
@@ -1039,6 +1057,227 @@ function heuristicCourse(q) {
   pick.sort((a, b) => (orank[a.c1] ?? 9) - (orank[b.c1] ?? 9));
   return { title: region ? `${region} 코스` : '오늘의 코스', intro: region ? `'${q}' 요청을 바탕으로 ${region} 근처 저장 장소에서 골랐어요.` : `'${q}' 요청을 바탕으로 저장 장소에서 어울리는 곳을 골랐어요.`, stops: pick.map(p => ({ p, why: p.mc || '' })) };
 }
+
+/* ---------- 토스트 (짧은 알림) ---------- */
+function toast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
+  t.textContent = msg;
+  t.classList.add('on');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('on'), 3200);
+}
+
+/* ================= 네이버 원본 관리 (가져오기 · 폴더 · 삭제) =================
+   백엔드는 app/functions/naver-sync.js. 쿠키가 등록되기 전엔 503이라 안내 화면만 보인다.
+   쓰기는 반드시 dry-run 미리보기 -> 사용자가 확인 -> confirm:true 순서로만 실행한다. */
+let SYNC = { ping: null, snap: null, folderId: null, sel: new Set(), busy: false };
+
+function initSync() {
+  const cl = $('#sync-close');
+  if (cl) cl.onclick = () => { $('#sync').hidden = true; };
+}
+function openSync() {
+  $('#sync').hidden = false;
+  SYNC.sel.clear(); SYNC.folderId = null;
+  renderSync();
+  syncPing();
+}
+async function syncApi(qs) {
+  const r = await fetch('/naver-sync?' + qs, { cache: 'no-store' });
+  const d = await r.json().catch(() => ({}));
+  return { status: r.status, ok: r.ok, d };
+}
+async function syncPing() {
+  const res = await syncApi('action=ping');
+  SYNC.ping = Object.assign({}, res.d, { status: res.status });
+  renderSync();
+}
+function syncEl(tag, cls, html) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html != null) e.innerHTML = html;
+  return e;
+}
+
+function renderSync() {
+  const body = $('#sync-body'); if (!body) return;
+  body.innerHTML = '';
+  const p = SYNC.ping;
+  if (!p) { body.appendChild(syncEl('p', 'rg-hint', '연결 상태 확인 중…')); return; }
+
+  const on = !!p.hasCookie, w = !!p.writeEnabled;
+  const card = syncEl('div', 'sync-card',
+    '<div class="sync-row"><span class="sync-dot' + (on ? ' ok' : '') + '"></span><b>' +
+    (on ? '네이버 계정 연결됨' : '네이버 계정 미연결') + '</b></div>' +
+    '<div class="sync-row"><span class="sync-dot' + (w ? ' ok' : '') + '"></span><b>' +
+    (w ? '수정·삭제 허용됨' : '수정·삭제 잠김') + '</b></div>');
+  body.appendChild(card);
+
+  if (!on) {
+    body.appendChild(syncEl('div', 'sync-guide',
+      '<p>이 기능을 켜려면 Cloudflare에 <b>본인이 직접</b> 값을 등록해야 합니다. ' +
+      '네이버 로그인 쿠키는 비밀값이라 앱이나 저장소에 넣지 않습니다.</p>' +
+      '<ol><li>크롬에서 <b>map.naver.com</b> 로그인 → F12 → Application → Cookies → ' +
+      '<code>NID_AUT</code>, <code>NID_SES</code> 값 복사</li>' +
+      '<li>Cloudflare → Workers &amp; Pages → favplace-map → Settings → Variables and secrets</li>' +
+      '<li><code>NAVER_COOKIE</code> = <code>NID_AUT=…; NID_SES=…</code> (Secret)</li>' +
+      '<li>수정·삭제까지 쓰려면 <code>NAVER_SYNC_WRITE</code> = <code>on</code></li></ol>' +
+      '<p class="warn">쿠키는 몇 주 뒤 만료됩니다. 안 되면 다시 복사해 넣으세요.</p>'));
+    return;
+  }
+
+  const sec1 = syncEl('div', 'sec-title'); sec1.textContent = '네이버에서 최신 목록 가져오기';
+  sec1.style.margin = '20px 4px 8px'; body.appendChild(sec1);
+
+  const btn = syncEl('button', 'act primary');
+  btn.textContent = SYNC.busy ? '가져오는 중…' : '지금 가져와서 비교하기';
+  btn.disabled = SYNC.busy;
+  btn.onclick = syncFetchSnapshot;
+  body.appendChild(btn);
+
+  if (!SYNC.snap) return;
+
+  const snap = SYNC.snap;
+  const localSids = new Set(PLACES.map(x => String(x.id)));
+  const remoteSids = new Set(snap.bookmarks.map(b => String(b.sid)).filter(Boolean));
+  const added = snap.bookmarks.filter(b => b.sid && !localSids.has(String(b.sid)));
+  const gone = PLACES.filter(x => !remoteSids.has(String(x.id)));
+
+  body.appendChild(syncEl('div', 'sync-card',
+    '<div class="sync-kv"><span>네이버 원본</span><b>' + fmtN(snap.bookmarks.length) + '곳</b></div>' +
+    '<div class="sync-kv"><span>이 앱의 데이터</span><b>' + fmtN(PLACES.length) + '곳</b></div>' +
+    '<div class="sync-kv"><span>앱에 없는 새 장소</span><b class="pos">' + added.length + '곳</b></div>' +
+    '<div class="sync-kv"><span>네이버에서 사라진 장소</span><b class="neg">' + gone.length + '곳</b></div>'));
+
+  const listBlock = (title, arr, nameOf) => {
+    if (!arr.length) return;
+    const t = syncEl('div', 'sec-title'); t.textContent = title; t.style.margin = '14px 4px 6px';
+    body.appendChild(t);
+    const box = syncEl('div', 'sync-list');
+    arr.slice(0, 40).forEach(x => { const r = syncEl('div', 'sync-li'); r.textContent = nameOf(x); box.appendChild(r); });
+    if (arr.length > 40) { const r = syncEl('div', 'sync-li dim'); r.textContent = '그 외 ' + (arr.length - 40) + '곳…'; box.appendChild(r); }
+    body.appendChild(box);
+  };
+  listBlock('앱에 없는 새 장소', added, b => b.name);
+  listBlock('네이버에서 사라진 장소', gone, x => x.n);
+
+  body.appendChild(syncEl('p', 'rg-hint',
+    '지도에 실제로 반영하려면 사진·평점 보강이 필요해서 <b>PC에서 빌드</b>를 한 번 돌려야 합니다 ' +
+    '(<code>enrich.py</code> → <code>build_data.py</code> → 배포). 여기서는 무엇이 달라졌는지까지 확인합니다.'));
+
+  const sec2 = syncEl('div', 'sec-title'); sec2.textContent = '폴더 관리 · 삭제';
+  sec2.style.margin = '22px 4px 8px'; body.appendChild(sec2);
+
+  if (!w) {
+    body.appendChild(syncEl('div', 'sync-guide',
+      '<p>수정·삭제가 잠겨 있습니다. Cloudflare에 <code>NAVER_SYNC_WRITE</code> = <code>on</code> 을 추가하면 열립니다.</p>'));
+    return;
+  }
+  renderSyncFolders(body);
+}
+
+async function syncFetchSnapshot() {
+  SYNC.busy = true; renderSync();
+  const res = await syncApi('action=snapshot');
+  SYNC.busy = false;
+  if (!res.ok) { SYNC.snap = null; renderSync(); toast('가져오기 실패 (HTTP ' + res.status + ') ' + (res.d.error || '')); return; }
+  SYNC.snap = res.d; SYNC.folderId = null; SYNC.sel.clear();
+  renderSync();
+}
+
+function renderSyncFolders(body) {
+  const snap = SYNC.snap;
+  const counts = {};
+  snap.bookmarks.forEach(b => b.folderIds.forEach(f => { counts[f] = (counts[f] || 0) + 1; }));
+
+  if (SYNC.folderId == null) {
+    body.appendChild(syncEl('p', 'rg-hint',
+      '폴더를 고르면 그 폴더의 장소를 골라 <b>폴더에서 빼거나 삭제</b>할 수 있어요.'));
+    snap.folders.forEach(f => {
+      const row = syncEl('div', 'rgrow2');
+      const main = syncEl('button', 'rgrow-main',
+        '<span class="rgname">' + esc(f.name) + (f.isDefault ? ' <span class="fbadge">기본</span>' : '') +
+        '</span><span class="rgcnt">' + (counts[f.folderId] || 0) + '</span>');
+      main.onclick = () => { SYNC.folderId = f.folderId; SYNC.sel.clear(); renderSync(); };
+      row.appendChild(main); body.appendChild(row);
+    });
+    return;
+  }
+
+  const folder = snap.folders.find(f => f.folderId === SYNC.folderId) || { name: '폴더' };
+  const back = syncEl('button', 'crumb'); back.textContent = '‹ 폴더 목록';
+  back.onclick = () => { SYNC.folderId = null; SYNC.sel.clear(); renderSync(); };
+  body.appendChild(back);
+
+  const items = snap.bookmarks.filter(b => b.folderIds.includes(SYNC.folderId));
+  const t = syncEl('div', 'sec-title'); t.style.margin = '14px 4px 8px';
+  t.textContent = folder.name + ' · ' + items.length + '곳';
+  body.appendChild(t);
+  body.appendChild(syncEl('p', 'rg-hint',
+    '이 폴더에만 들어있는 장소를 빼면 <b>즐겨찾기에서 완전히 삭제</b>됩니다. 실행 전에 항목별로 어떻게 되는지 먼저 보여드려요.'));
+
+  const box = syncEl('div', 'sync-list');
+  items.slice(0, 300).forEach(b => {
+    const only = b.folderIds.length <= 1;
+    const row = syncEl('label', 'sync-pick',
+      '<input type="checkbox"' + (SYNC.sel.has(b.bookmarkId) ? ' checked' : '') + ' />' +
+      '<span class="sp-name">' + esc(b.name) + '</span>' +
+      '<span class="sp-tag' + (only ? ' danger' : '') + '">' + (only ? '삭제됨' : '폴더만') + '</span>');
+    row.querySelector('input').onchange = e => {
+      if (e.target.checked) {
+        if (SYNC.sel.size >= 25) { e.target.checked = false; toast('한 번에 25개까지만 선택할 수 있어요'); return; }
+        SYNC.sel.add(b.bookmarkId);
+      } else SYNC.sel.delete(b.bookmarkId);
+      const go = $('#sync-go');
+      if (go) { go.disabled = !SYNC.sel.size; go.textContent = SYNC.sel.size ? '선택한 ' + SYNC.sel.size + '곳 처리하기' : '장소를 선택하세요'; }
+    };
+    box.appendChild(row);
+  });
+  body.appendChild(box);
+
+  const go = syncEl('button', 'act primary'); go.id = 'sync-go';
+  go.style.marginTop = '14px';
+  go.disabled = !SYNC.sel.size;
+  go.textContent = SYNC.sel.size ? '선택한 ' + SYNC.sel.size + '곳 처리하기' : '장소를 선택하세요';
+  go.onclick = syncPreview;
+  body.appendChild(go);
+}
+
+async function syncPost(payload) {
+  const r = await fetch('/naver-sync', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload),
+  });
+  const d = await r.json().catch(() => ({}));
+  return { status: r.status, ok: r.ok, d };
+}
+
+async function syncPreview() {
+  const ids = Array.from(SYNC.sel);
+  if (!ids.length) return;
+  const res = await syncPost({ action: 'unmapFolder', folderId: SYNC.folderId, bookmarkIds: ids });
+  if (!res.ok || !res.d.dryRun) { toast('미리보기 실패 (HTTP ' + res.status + ') ' + (res.d.error || '')); return; }
+  const pv = res.d.preview || [];
+  const del = pv.filter(x => String(x['결과'] || '').indexOf('삭제') >= 0);
+  const lines = pv.slice(0, 12).map(x => '· ' + x.name + ' — ' + x['결과']).join('\n');
+  const more = pv.length > 12 ? '\n… 그 외 ' + (pv.length - 12) + '곳' : '';
+  const msg = res.d.count + '곳을 처리합니다.\n\n' +
+    '폴더에서만 제거: ' + (pv.length - del.length) + '곳\n' +
+    '⚠️ 즐겨찾기에서 완전 삭제: ' + del.length + '곳\n\n' + lines + more +
+    '\n\n되돌릴 수 없습니다. 진행할까요?';
+  if (!window.confirm(msg)) return;
+  syncExecute(ids);
+}
+
+async function syncExecute(ids) {
+  const res = await syncPost({ action: 'unmapFolder', folderId: SYNC.folderId, bookmarkIds: ids, confirm: true });
+  if (!res.ok) { toast('실행 실패 (HTTP ' + res.status + ') ' + (res.d.error || '')); return; }
+  const un = (res.d['폴더에서제거됨'] || []).length, rm = (res.d['완전삭제됨'] || []).length;
+  toast('완료 — 폴더에서 뺀 곳 ' + un + ', 삭제된 곳 ' + rm);
+  SYNC.sel.clear();
+  await syncFetchSnapshot();
+}
+
 /* ---------- 위치 기반 추천 ---------- */
 function haversine(la1, lo1, la2, lo2) {
   const R = 6371000, t = Math.PI / 180;
