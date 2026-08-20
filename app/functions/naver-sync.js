@@ -73,6 +73,51 @@ function folderList(d) {
   });
 }
 
+
+// 북마크 PATCH에 필요한 token 을 서버에서 직접 찾아본다.
+// 캡처된 HAR의 어떤 API 응답에도 없었으므로, 위젯/목록 페이지의 HTML·JS 안에 있을 것으로 보고 훑는다.
+const TOKEN_PAGES = [
+  "https://pages.map.naver.com/save-pages/pc/all-list?from=map&lang=ko",
+  "https://pages.map.naver.com/save-widget/pc/index.html",
+  "https://pages.map.naver.com/save-widget/",
+  "https://map.naver.com/p/favorite/place",
+];
+// 캡처된 토큰은 44자 base64url (32바이트). 키 이름과 함께 있는 형태를 우선 찾는다.
+const TOKEN_PATTERNS = [
+  /["']?token["']?\s*[:=]\s*["']([A-Za-z0-9_\-+/]{20,64}={0,2})["']/i,
+  /csrf[^"']{0,12}["']?\s*[:=]\s*["']([A-Za-z0-9_\-+/]{20,64}={0,2})["']/i,
+];
+
+async function huntToken(cookie) {
+  const tried = [];
+  for (const url of TOKEN_PAGES) {
+    try {
+      const r = await fetch(url, {
+        headers: {
+          "User-Agent": UA,
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "ko-KR,ko;q=0.9",
+          "Referer": "https://map.naver.com/",
+          "Cookie": cookie,
+        },
+      });
+      const html = await r.text();
+      const hit = { url, status: r.status, bytes: html.length, tokenWord: (html.match(/token/gi) || []).length };
+      for (const re of TOKEN_PATTERNS) {
+        const m = html.match(re);
+        if (m) { hit.found = true; hit.length = m[1].length; tried.push(hit); return { token: m[1], from: url, tried }; }
+      }
+      // 스크립트 번들까지 한 겹 더
+      const scripts = [...html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(m => m[1]).slice(0, 6);
+      hit.scripts = scripts.length;
+      tried.push(hit);
+    } catch (e) {
+      tried.push({ url, error: String(e.message || e).slice(0, 80) });
+    }
+  }
+  return { token: null, tried };
+}
+
 /* ---------- GET: 상태 확인 · sid→bookmarkId 변환 (모두 읽기 전용) ---------- */
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
@@ -134,13 +179,14 @@ export async function onRequestPost({ request, env }) {
   // 데이터는 전혀 바뀌지 않는다(displayName/memo/url 원본 유지, mapping 비움).
   if (action === "probeWrite") {
     let snap; try { snap = await fetchSync(cookie); } catch (e) { return j({ error: String(e.message || e) }, 502); }
-    const raw = snap.my.bookmarkSync.bookmarks
-      .map(e => e.bookmark).filter(b => b && b.bookmarkId);
-    const target = body.bookmarkId
-      ? raw.find(b => b.bookmarkId === Number(body.bookmarkId))
-      : raw[0];
+    const raw = snap.my.bookmarkSync.bookmarks.map(e => e.bookmark).filter(b => b && b.bookmarkId);
+    const target = body.bookmarkId ? raw.find(b => b.bookmarkId === Number(body.bookmarkId)) : raw[0];
     if (!target) return j({ error: "시험할 북마크를 찾지 못함" }, 404);
 
+    // 1) 토큰을 서버에서 찾아본다
+    const hunt = await huntToken(cookie);
+
+    // 2) 찾았으면 토큰 포함, 못 찾았으면 없이 — 어느 쪽이든 값은 그대로라 데이터는 안 바뀐다
     const payload = {
       displayName: target.displayName || "",
       memo: target.memo || "",
@@ -148,22 +194,27 @@ export async function onRequestPost({ request, env }) {
       mapping: { addFolderIds: [], removeFolderIds: [] },
       cv: "v1.4.7",
     };
+    if (hunt.token) payload.token = hunt.token;
+
     const r = await fetch(`${PAGES_ORIGIN}/save-widget/api/maps-bookmark/bookmarks/${target.bookmarkId}?cv=v1.4.7&t=${Date.now()}`, {
       method: "PATCH",
       headers: naverHeaders(cookie, { "content-type": "application/json" }),
       body: JSON.stringify(payload),
     });
     const text = await r.text();
-    let out; try { out = JSON.parse(text); } catch { out = { raw: text.slice(0, 400) }; }
+    let out; try { out = JSON.parse(text); } catch { out = { raw: text.slice(0, 300) }; }
+
     return j({
       ok: r.ok, status: r.status,
-      토큰없이됨: r.ok,
-      대상: { bookmarkId: target.bookmarkId, name: target.name, 원래메모: target.memo || "" },
-      보낸값: payload,
+      토큰찾음: !!hunt.token,
+      토큰출처: hunt.from || null,
+      토큰길이: hunt.token ? hunt.token.length : 0,
+      탐색기록: hunt.tried,
+      대상: { bookmarkId: target.bookmarkId, name: target.name },
       응답: out,
       해석: r.ok
-        ? "✅ token 없이 통과 — 메모·이름변경·폴더이동을 구현할 수 있습니다"
-        : "❌ token이 필요합니다 — 토큰 출처를 찾아야 합니다",
+        ? (hunt.token ? "✅ 토큰을 찾아 통과 — 수정 기능 구현 가능" : "✅ 토큰 없이 통과")
+        : (hunt.token ? "❌ 토큰을 찾았는데도 실패 — 다른 값이 필요" : "❌ 토큰을 못 찾음 — 콘솔에서 직접 찾아야 함"),
     });
   }
 
