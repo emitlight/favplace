@@ -1071,17 +1071,26 @@ function toast(msg) {
 /* ================= 네이버 원본 관리 (가져오기 · 폴더 · 삭제) =================
    백엔드는 app/functions/naver-sync.js. 쿠키가 등록되기 전엔 503이라 안내 화면만 보인다.
    쓰기는 반드시 dry-run 미리보기 -> 사용자가 확인 -> confirm:true 순서로만 실행한다. */
-let SYNC = { ping: null, snap: null, folderId: null, sel: new Set(), busy: false };
+let SYNC = { ping: null, snap: null, folderId: null, sel: new Set(), busy: false, fromMine: false };
 
 function initSync() {
   const cl = $('#sync-close');
-  if (cl) cl.onclick = () => { $('#sync').hidden = true; };
+  if (cl) cl.onclick = closeSync;
 }
 function openSync() {
+  // '내 기록'에서 들어오므로 그 오버레이는 닫는다 (같은 z-index라 안 닫으면 위를 덮는다)
+  const mine = $('#mine');
+  SYNC.fromMine = mine && !mine.hidden;
+  if (mine) mine.hidden = true;
   $('#sync').hidden = false;
   SYNC.sel.clear(); SYNC.folderId = null;
   renderSync();
   syncPing();
+}
+function closeSync() {
+  $('#sync').hidden = true;
+  // 들어온 곳으로 되돌려준다
+  if (SYNC.fromMine) { SYNC.fromMine = false; openMine(); }
 }
 async function syncApi(qs) {
   const r = await fetch('/naver-sync?' + qs, { cache: 'no-store' });
