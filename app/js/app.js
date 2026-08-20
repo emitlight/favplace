@@ -1071,7 +1071,7 @@ function toast(msg) {
 /* ================= 네이버 원본 관리 (가져오기 · 폴더 · 삭제) =================
    백엔드는 app/functions/naver-sync.js. 쿠키가 등록되기 전엔 503이라 안내 화면만 보인다.
    쓰기는 반드시 dry-run 미리보기 -> 사용자가 확인 -> confirm:true 순서로만 실행한다. */
-let SYNC = { ping: null, snap: null, folderId: null, sel: new Set(), busy: false, fromMine: false };
+let SYNC = { ping: null, snap: null, folderId: null, sel: new Set(), busy: false, fromMine: false, probe: null };
 
 function initSync() {
   const cl = $('#sync-close');
@@ -1134,6 +1134,24 @@ function renderSync() {
       '<li>수정·삭제까지 쓰려면 <code>NAVER_SYNC_WRITE</code> = <code>on</code></li></ol>' +
       '<p class="warn">쿠키는 몇 주 뒤 만료됩니다. 안 되면 다시 복사해 넣으세요.</p>'));
     return;
+  }
+
+  if (w) {
+    const probe = syncEl('button', 'act');
+    probe.style.marginBottom = '4px';
+    probe.textContent = '쓰기 권한 시험하기 (아무것도 바꾸지 않음)';
+    probe.onclick = syncProbeWrite;
+    body.appendChild(probe);
+    const ph = syncEl('p', 'rg-hint',
+      '지금 저장된 값을 그대로 다시 써서 <b>메모·이름 수정이 가능한지</b>만 확인합니다. 데이터는 바뀌지 않아요.');
+    ph.style.margin = '6px 2px 4px';
+    body.appendChild(ph);
+    if (SYNC.probe) {
+      const r = syncEl('div', 'sync-guide');
+      r.innerHTML = '<p><b>' + esc(SYNC.probe.해석 || '') + '</b></p>' +
+        '<p>HTTP ' + SYNC.probe.status + ' · 대상: ' + esc((SYNC.probe.대상 || {}).name || '') + '</p>';
+      body.appendChild(r);
+    }
   }
 
   const sec1 = syncEl('div', 'sec-title'); sec1.textContent = '네이버에서 최신 목록 가져오기';
@@ -1268,6 +1286,14 @@ function renderSyncFolders(body) {
   go.textContent = SYNC.sel.size ? '선택한 ' + SYNC.sel.size + '곳 처리하기' : '장소를 선택하세요';
   go.onclick = syncPreview;
   body.appendChild(go);
+}
+
+async function syncProbeWrite() {
+  toast('시험 중…');
+  const res = await syncPost({ action: 'probeWrite' });
+  SYNC.probe = res.d;
+  renderSync();
+  toast(res.d && res.d.토큰없이됨 ? '✅ 토큰 없이 통과 — 수정 기능 구현 가능' : '❌ 토큰이 필요합니다 (HTTP ' + res.status + ')');
 }
 
 async function syncCreateFolder() {

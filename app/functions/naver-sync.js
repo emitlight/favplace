@@ -129,6 +129,44 @@ export async function onRequestPost({ request, env }) {
   const action = String(body.action || "");
   const cookie = env.NAVER_COOKIE;
 
+  // ── 쓰기 권한 시험 (no-op) ──
+  // 북마크 PATCH가 정말 token 없이 되는지 확인한다. 지금 저장된 값을 그대로 다시 써서
+  // 데이터는 전혀 바뀌지 않는다(displayName/memo/url 원본 유지, mapping 비움).
+  if (action === "probeWrite") {
+    let snap; try { snap = await fetchSync(cookie); } catch (e) { return j({ error: String(e.message || e) }, 502); }
+    const raw = snap.my.bookmarkSync.bookmarks
+      .map(e => e.bookmark).filter(b => b && b.bookmarkId);
+    const target = body.bookmarkId
+      ? raw.find(b => b.bookmarkId === Number(body.bookmarkId))
+      : raw[0];
+    if (!target) return j({ error: "시험할 북마크를 찾지 못함" }, 404);
+
+    const payload = {
+      displayName: target.displayName || "",
+      memo: target.memo || "",
+      url: target.url || "",
+      mapping: { addFolderIds: [], removeFolderIds: [] },
+      cv: "v1.4.7",
+    };
+    const r = await fetch(`${PAGES_ORIGIN}/save-widget/api/maps-bookmark/bookmarks/${target.bookmarkId}?cv=v1.4.7&t=${Date.now()}`, {
+      method: "PATCH",
+      headers: naverHeaders(cookie, { "content-type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    const text = await r.text();
+    let out; try { out = JSON.parse(text); } catch { out = { raw: text.slice(0, 400) }; }
+    return j({
+      ok: r.ok, status: r.status,
+      토큰없이됨: r.ok,
+      대상: { bookmarkId: target.bookmarkId, name: target.name, 원래메모: target.memo || "" },
+      보낸값: payload,
+      응답: out,
+      해석: r.ok
+        ? "✅ token 없이 통과 — 메모·이름변경·폴더이동을 구현할 수 있습니다"
+        : "❌ token이 필요합니다 — 토큰 출처를 찾아야 합니다",
+    });
+  }
+
   // ── 리스트(폴더) 만들기 — 토큰 불필요 ──
   if (action === "createFolder") {
     const name = String(body.name || "").trim();
@@ -193,7 +231,7 @@ export async function onRequestPost({ request, env }) {
     return j({
       error: "아직 구현되지 않은 action",
       requested: action,
-      supported: ["unmapFolder", "createFolder", "deleteFolder"],
+      supported: ["unmapFolder", "createFolder", "deleteFolder", "probeWrite"],
       note: "메모·이름변경·폴더에 장소 추가는 save-widget 북마크 PATCH가 필요한데 그 바디의 token 출처를 아직 못 찾았음",
     }, 501);
   }
