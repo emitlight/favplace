@@ -83,7 +83,7 @@ export async function onRequestGet({ request, env }) {
   if (action === "ping") {
     return j({
       ok: true, hasCookie, writeEnabled,
-      supported: { unmapFolder: true, delete: "unmapFolder로 모든 폴더에서 빼면 삭제됨", memo: false, rename: false, moveFolder: false },
+      supported: { unmapFolder: true, delete: "unmapFolder로 모든 폴더에서 빼면 삭제됨", createFolder: true, deleteFolder: "빈 리스트만", memo: false, rename: false, moveFolder: false },
       note: writeEnabled ? "쓰기 가능 (단, confirm:true 필요)" : "읽기/상태만 가능",
     });
   }
@@ -129,12 +129,72 @@ export async function onRequestPost({ request, env }) {
   const action = String(body.action || "");
   const cookie = env.NAVER_COOKIE;
 
+  // ── 리스트(폴더) 만들기 — 토큰 불필요 ──
+  if (action === "createFolder") {
+    const name = String(body.name || "").trim();
+    if (!name) return j({ error: "name 필요" }, 400);
+    if (name.length > 40) return j({ error: "이름은 40자까지" }, 400);
+    if (!body.confirm) return j({ dryRun: true, willCreate: name, note: "실행하려면 confirm:true" });
+    const r = await fetch(`${PAGES_ORIGIN}/save-widget/api/maps-bookmark/folders/new?t=${Date.now()}`, {
+      method: "POST",
+      headers: naverHeaders(cookie, { "content-type": "application/json" }),
+      body: JSON.stringify({ name, colorCode: String(body.colorCode || "1"), isPublished: false, isExposed: false }),
+    });
+    const text = await r.text();
+    let out; try { out = JSON.parse(text); } catch { out = { raw: text.slice(0, 400) }; }
+    if (!r.ok) return j({ ok: false, status: r.status, response: out }, 502);
+    return j({ ok: true, folderId: out.folderId, name: out.name, colorCode: out.colorCode });
+  }
+
+  // ── 리스트(폴더) 삭제 — 토큰 불필요 ──
+  // ⚠️ 캡처는 빈 폴더 2건뿐이었다. 장소가 든 폴더를 지웠을 때 그 장소들이 살아남는지 검증되지 않아
+  //    기본적으로 비어있지 않은 폴더는 거부한다(allowNonEmpty 로만 강제 가능).
+  if (action === "deleteFolder") {
+    const folderId = Number(body.folderId);
+    if (!folderId) return j({ error: "folderId 필요" }, 400);
+
+    let snap; try { snap = await fetchSync(cookie); } catch (e) { return j({ error: String(e.message || e) }, 502); }
+    const folder = folderList(snap).find(f => f.folderId === folderId);
+    if (!folder) return j({ error: "그런 폴더가 없음", folderId }, 404);
+    if (folder.isDefault) return j({ error: "기본 폴더(내 장소)는 삭제할 수 없음" }, 400);
+
+    const { byId } = indexBookmarks(snap);
+    const members = Object.values(byId).filter(b => b.folderIds.includes(folderId));
+    const onlyHere = members.filter(b => b.folderIds.length <= 1);
+
+    if (members.length && !body.allowNonEmpty) {
+      return j({
+        error: "비어있지 않은 리스트입니다",
+        folderId, name: folder.name, count: members.length, onlyHere: onlyHere.length,
+        note: "장소가 든 리스트를 지웠을 때 그 장소들이 남는지 아직 검증되지 않았습니다. " +
+              "먼저 unmapFolder 로 장소를 비운 뒤 삭제하세요.",
+      }, 409);
+    }
+    if (!body.confirm) {
+      return j({
+        dryRun: true, folderId, name: folder.name, count: members.length,
+        onlyHere: onlyHere.map(b => b.name).slice(0, 25),
+        결과: members.length ? "⚠️ 검증되지 않은 동작" : "빈 리스트 삭제 (장소 영향 없음)",
+        note: "실행하려면 confirm:true",
+      });
+    }
+    const r = await fetch(`${PAGES_ORIGIN}/save-pages/api/maps-bookmark/v3/folders/${folderId}`, {
+      method: "DELETE",
+      headers: naverHeaders(cookie, { "content-type": "application/json" }),
+      body: "{}",
+    });
+    const text = await r.text();
+    let out; try { out = JSON.parse(text); } catch { out = { raw: text.slice(0, 400) }; }
+    if (!r.ok) return j({ ok: false, status: r.status, response: out }, 502);
+    return j({ ok: true, folderId, name: folder.name, response: out });
+  }
+
   if (action !== "unmapFolder") {
     return j({
       error: "아직 구현되지 않은 action",
       requested: action,
-      supported: ["unmapFolder"],
-      note: "메모·이름변경·폴더추가는 save-widget PATCH가 필요한데, 그 요청 바디의 token 출처를 아직 못 찾았음",
+      supported: ["unmapFolder", "createFolder", "deleteFolder"],
+      note: "메모·이름변경·폴더에 장소 추가는 save-widget 북마크 PATCH가 필요한데 그 바디의 token 출처를 아직 못 찾았음",
     }, 501);
   }
 

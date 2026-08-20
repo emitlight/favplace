@@ -1195,13 +1195,30 @@ function renderSyncFolders(body) {
     body.appendChild(syncEl('p', 'rg-hint',
       '폴더를 고르면 그 폴더의 장소를 골라 <b>폴더에서 빼거나 삭제</b>할 수 있어요.'));
     snap.folders.forEach(f => {
+      const n = counts[f.folderId] || 0;
       const row = syncEl('div', 'rgrow2');
       const main = syncEl('button', 'rgrow-main',
         '<span class="rgname">' + esc(f.name) + (f.isDefault ? ' <span class="fbadge">기본</span>' : '') +
-        '</span><span class="rgcnt">' + (counts[f.folderId] || 0) + '</span>');
+        '</span><span class="rgcnt">' + n + '</span>');
       main.onclick = () => { SYNC.folderId = f.folderId; SYNC.sel.clear(); renderSync(); };
-      row.appendChild(main); body.appendChild(row);
+      row.appendChild(main);
+      // 빈 리스트만 삭제 허용 — 장소가 든 리스트를 지웠을 때의 동작이 검증되지 않았다
+      if (!f.isDefault) {
+        const del = syncEl('button', 'rgdrill danger');
+        del.textContent = '🗑';
+        del.title = n ? '먼저 장소를 비워야 삭제할 수 있어요' : '이 리스트 삭제';
+        del.disabled = n > 0;
+        del.onclick = () => syncDeleteFolder(f, n);
+        row.appendChild(del);
+      }
+      body.appendChild(row);
     });
+
+    const mk = syncEl('button', 'act');
+    mk.style.marginTop = '12px';
+    mk.textContent = '＋ 새 리스트 만들기';
+    mk.onclick = syncCreateFolder;
+    body.appendChild(mk);
     return;
   }
 
@@ -1242,6 +1259,27 @@ function renderSyncFolders(body) {
   go.textContent = SYNC.sel.size ? '선택한 ' + SYNC.sel.size + '곳 처리하기' : '장소를 선택하세요';
   go.onclick = syncPreview;
   body.appendChild(go);
+}
+
+async function syncCreateFolder() {
+  const name = (window.prompt('새 리스트 이름을 입력하세요', '') || '').trim();
+  if (!name) return;
+  const res = await syncPost({ action: 'createFolder', name: name, confirm: true });
+  if (!res.ok) { toast('만들기 실패 (HTTP ' + res.status + ') ' + (res.d.error || '')); return; }
+  toast('리스트 "' + res.d.name + '"를 만들었어요');
+  await syncFetchSnapshot();
+}
+
+async function syncDeleteFolder(f, n) {
+  if (n > 0) { toast('장소가 든 리스트는 아직 지울 수 없어요. 먼저 장소를 비워주세요.'); return; }
+  const msg = ['리스트 "' + f.name + '"를 삭제합니다.', '',
+    '비어 있는 리스트라 장소에는 영향이 없습니다.',
+    '되돌릴 수 없습니다. 진행할까요?'].join('\n');
+  if (!window.confirm(msg)) return;
+  const res = await syncPost({ action: 'deleteFolder', folderId: f.folderId, confirm: true });
+  if (!res.ok) { toast('삭제 실패 (HTTP ' + res.status + ') ' + (res.d.error || '')); return; }
+  toast('리스트 "' + f.name + '"를 삭제했어요');
+  await syncFetchSnapshot();
 }
 
 async function syncPost(payload) {

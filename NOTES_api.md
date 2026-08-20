@@ -29,6 +29,19 @@
     - `unmappedBookmarkIds` = 그 폴더에서만 빠짐(다른 폴더에 남아있음)
     - `removedBookmarkIds` = **즐겨찾기 자체가 삭제됨**(마지막 폴더에서 뺀 경우)
   - ⚠️ `save-widget`(PATCH, 토큰 필요)과 `save-pages/v3`(토큰 불필요)는 **다른 계열**. v3 쪽을 쓸 것.
+- ✅ **리스트(폴더) 만들기 — 토큰 불필요!** (3차 HAR, 2026-08-19)
+  `POST https://pages.map.naver.com/save-widget/api/maps-bookmark/folders/new?t={epoch_ms}`
+  - 바디: `{"name":"새 리스트","colorCode":"1","isPublished":false,"isExposed":false}`
+  - 응답 200: 폴더 객체 전체 `{folderId, name, colorCode, iconId, markerColor, shareId, bookmarkCount:0, folderType:"MY", creationTime, ...}`
+  - ⚠️ **중요**: `save-widget` 계열인데도 `token`이 없다. 3차 HAR 전체에서 `"token"` 등장 **0회**.
+    → 토큰이 필요한 건 `save-widget`의 **북마크 PATCH 하나뿐**일 수 있음.
+    쿠키 등록 후 PATCH를 token 없이 한 번 시도해볼 가치가 있다.
+- ✅ **리스트(폴더) 삭제 — 토큰 불필요**
+  `DELETE https://pages.map.naver.com/save-pages/api/maps-bookmark/v3/folders/{folderId}` 바디 `{}`
+  - 응답 200: `{"statusCode":"200","apiErrorCode":200,"apiErrorMessage":"","displayMessage":"OK"}`
+  - ⚠️ **캡처한 두 건 모두 빈 폴더(bookmarkCount 0)였다.** 장소가 들어있는 폴더를 지웠을 때
+    그 장소들이 "내 장소"에 남는지 함께 삭제되는지는 **검증되지 않음.** 확인 전까지 비어있지 않은 폴더는 막을 것.
+- 보조: `PUT /save-widget/api/maps-search/kvfarm/favorite-timestamp` — 쓰기 직후 호출되는 캐시 무효화용. 없어도 동작하는 것으로 보임.
 - **v3 보조**: `GET /v3/folder-mappings?q=bookmark-ids=A;B` → `[{bookmarkId, folderMappings:[{folderId,creationTime}]}]`
   · `GET /v3/shares/{shareId}/bookmarks` → `{folder, bookmarkList, unavailableCount, mismatchedCount, removed}`
 - **읽기 보조**: `GET /save-widget/api/maps-bookmark/sync?t={ms}` = `/p/api/bookmark` 과 같은 전체 동기화 페이로드.
