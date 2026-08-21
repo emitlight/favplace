@@ -1147,9 +1147,26 @@ function renderSync() {
     ph.style.margin = '6px 2px 4px';
     body.appendChild(ph);
     if (SYNC.probe) {
+      const P = SYNC.probe;
       const r = syncEl('div', 'sync-guide');
-      r.innerHTML = '<p><b>' + esc(SYNC.probe.해석 || '') + '</b></p>' +
-        '<p>HTTP ' + SYNC.probe.status + ' · 대상: ' + esc((SYNC.probe.대상 || {}).name || '') + '</p>';
+      let h = '<p><b>' + esc(P.해석 || P.error || '결과 없음') + '</b></p>';
+      h += '<p>PATCH 응답: HTTP ' + (P.status != null ? P.status : '—') +
+           ' · 함수 응답: HTTP ' + (P._http != null ? P._http : '—') +
+           ' · 대상: ' + esc(P._target || '') + '</p>';
+      if (P.토큰찾음) h += '<p>토큰 찾음 · 출처: <code>' + esc(String(P.토큰출처 || '')) + '</code></p>';
+      if (P.탐색기록 && P.탐색기록.length) {
+        h += '<p><b>탐색 기록</b></p><ol>';
+        P.탐색기록.forEach(t => {
+          h += '<li>' + esc(String(t.url || '').replace('https://', '')) + ' — ' +
+               (t.error ? ('오류: ' + esc(t.error))
+                        : ('HTTP ' + t.status + ' · ' + (t.bytes || 0) + 'B · token 단어 ' + (t.tokenWord || 0) + '회')) +
+               (t.context ? '<br /><code>' + esc(String(t.context).slice(0, 120)) + '</code>' : '') +
+               '</li>';
+        });
+        h += '</ol>';
+      }
+      if (P.응답) h += '<p><b>네이버 응답</b><br /><code>' + esc(JSON.stringify(P.응답).slice(0, 200)) + '</code></p>';
+      r.innerHTML = h;
       body.appendChild(r);
     }
   }
@@ -1289,11 +1306,23 @@ function renderSyncFolders(body) {
 }
 
 async function syncProbeWrite() {
-  toast('시험 중…');
-  const res = await syncPost({ action: 'probeWrite' });
-  SYNC.probe = res.d;
+  if (!SYNC.snap || !SYNC.snap.bookmarks || !SYNC.snap.bookmarks.length) {
+    toast('먼저 "지금 가져와서 비교하기"를 눌러주세요');
+    return;
+  }
+  const b = SYNC.snap.bookmarks[0];
+  toast('시험 중… (몇 초 걸려요)');
+  const res = await syncPost({
+    action: 'probeWrite',
+    bookmarkId: b.bookmarkId,
+    memo: b.memo || '',
+    displayName: '',
+    url: ''
+  });
+  SYNC.probe = Object.assign({ _http: res.status, _target: b.name }, res.d || {});
   renderSync();
-  toast(res.d && res.d.토큰없이됨 ? '✅ 토큰 없이 통과 — 수정 기능 구현 가능' : '❌ 토큰이 필요합니다 (HTTP ' + res.status + ')');
+  if (res.d && res.d.ok) toast('✅ 통과 — 수정 기능 구현 가능');
+  else toast('❌ 실패 — 아래 진단을 확인하세요');
 }
 
 async function syncCreateFolder() {

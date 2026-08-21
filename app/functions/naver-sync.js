@@ -88,31 +88,39 @@ const TOKEN_PATTERNS = [
   /csrf[^"']{0,12}["']?\s*[:=]\s*["']([A-Za-z0-9_\-+/]{20,64}={0,2})["']/i,
 ];
 
-async function huntToken(cookie) {
+async function huntToken(cookie, only) {
   const tried = [];
-  for (const url of TOKEN_PAGES) {
+  const pages = only ? [only] : TOKEN_PAGES;
+  const CAP = 400000;   // 페이지당 400KB 까지만 검사 (워커 CPU 한도 보호)
+  for (const url of pages) {
     try {
       const r = await fetch(url, {
         headers: {
           "User-Agent": UA,
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
           "Accept-Language": "ko-KR,ko;q=0.9",
           "Referer": "https://map.naver.com/",
           "Cookie": cookie,
         },
+        cf: { cacheTtl: 0 },
       });
-      const html = await r.text();
-      const hit = { url, status: r.status, bytes: html.length, tokenWord: (html.match(/token/gi) || []).length };
+      let html = await r.text();
+      const full = html.length;
+      if (html.length > CAP) html = html.slice(0, CAP);
+      const hit = { url, status: r.status, bytes: full, scanned: html.length,
+                    tokenWord: (html.match(/token/gi) || []).length };
       for (const re of TOKEN_PATTERNS) {
-        const m = html.match(re);
-        if (m) { hit.found = true; hit.length = m[1].length; tried.push(hit); return { token: m[1], from: url, tried }; }
+        const m = re.exec(html);
+        if (m && m[1]) { hit.found = true; hit.len = m[1].length; tried.push(hit); return { token: m[1], from: url, tried }; }
       }
-      // 스크립트 번들까지 한 겹 더
-      const scripts = [...html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(m => m[1]).slice(0, 6);
-      hit.scripts = scripts.length;
+      // 토큰 단어가 보이면 주변 문맥을 짧게 남겨 다음 단서로 쓴다
+      if (hit.tokenWord) {
+        const i = html.search(/token/i);
+        hit.context = html.slice(Math.max(0, i - 60), i + 90).replace(/\s+/g, " ");
+      }
       tried.push(hit);
     } catch (e) {
-      tried.push({ url, error: String(e.message || e).slice(0, 80) });
+      tried.push({ url, error: String((e && e.message) || e).slice(0, 100) });
     }
   }
   return { token: null, tried };
@@ -178,44 +186,43 @@ export async function onRequestPost({ request, env }) {
   // 북마크 PATCH가 정말 token 없이 되는지 확인한다. 지금 저장된 값을 그대로 다시 써서
   // 데이터는 전혀 바뀌지 않는다(displayName/memo/url 원본 유지, mapping 비움).
   if (action === "probeWrite") {
-    let snap; try { snap = await fetchSync(cookie); } catch (e) { return j({ error: String(e.message || e) }, 502); }
-    const raw = snap.my.bookmarkSync.bookmarks.map(e => e.bookmark).filter(b => b && b.bookmarkId);
-    const target = body.bookmarkId ? raw.find(b => b.bookmarkId === Number(body.bookmarkId)) : raw[0];
-    if (!target) return j({ error: "시험할 북마크를 찾지 못함" }, 404);
+    try {
+      const bid = Number(body.bookmarkId);
+      if (!bid) return j({ error: "bookmarkId 필요 — 먼저 '지금 가져와서 비교하기'를 눌러주세요" }, 400);
 
-    // 1) 토큰을 서버에서 찾아본다
-    const hunt = await huntToken(cookie);
+      const hunt = await huntToken(cookie, body.page);
 
-    // 2) 찾았으면 토큰 포함, 못 찾았으면 없이 — 어느 쪽이든 값은 그대로라 데이터는 안 바뀐다
-    const payload = {
-      displayName: target.displayName || "",
-      memo: target.memo || "",
-      url: target.url || "",
-      mapping: { addFolderIds: [], removeFolderIds: [] },
-      cv: "v1.4.7",
-    };
-    if (hunt.token) payload.token = hunt.token;
+      // 값은 클라이언트가 넘겨준 현재 값 그대로 (데이터 불변)
+      const payload = {
+        displayName: String(body.displayName || ""),
+        memo: String(body.memo || ""),
+        url: String(body.url || ""),
+        mapping: { addFolderIds: [], removeFolderIds: [] },
+        cv: "v1.4.7",
+      };
+      if (hunt.token) payload.token = hunt.token;
 
-    const r = await fetch(`${PAGES_ORIGIN}/save-widget/api/maps-bookmark/bookmarks/${target.bookmarkId}?cv=v1.4.7&t=${Date.now()}`, {
-      method: "PATCH",
-      headers: naverHeaders(cookie, { "content-type": "application/json" }),
-      body: JSON.stringify(payload),
-    });
-    const text = await r.text();
-    let out; try { out = JSON.parse(text); } catch { out = { raw: text.slice(0, 300) }; }
+      const r = await fetch(`${PAGES_ORIGIN}/save-widget/api/maps-bookmark/bookmarks/${bid}?cv=v1.4.7&t=${Date.now()}`, {
+        method: "PATCH",
+        headers: naverHeaders(cookie, { "content-type": "application/json" }),
+        body: JSON.stringify(payload),
+      });
+      const text = await r.text();
+      let out; try { out = JSON.parse(text); } catch { out = { raw: text.slice(0, 200) }; }
 
-    return j({
-      ok: r.ok, status: r.status,
-      토큰찾음: !!hunt.token,
-      토큰출처: hunt.from || null,
-      토큰길이: hunt.token ? hunt.token.length : 0,
-      탐색기록: hunt.tried,
-      대상: { bookmarkId: target.bookmarkId, name: target.name },
-      응답: out,
-      해석: r.ok
-        ? (hunt.token ? "✅ 토큰을 찾아 통과 — 수정 기능 구현 가능" : "✅ 토큰 없이 통과")
-        : (hunt.token ? "❌ 토큰을 찾았는데도 실패 — 다른 값이 필요" : "❌ 토큰을 못 찾음 — 콘솔에서 직접 찾아야 함"),
-    });
+      return j({
+        ok: r.ok, status: r.status,
+        토큰찾음: !!hunt.token,
+        토큰출처: hunt.from || null,
+        탐색기록: hunt.tried,
+        응답: out,
+        해석: r.ok
+          ? (hunt.token ? "✅ 토큰을 찾아 통과 — 수정 기능 구현 가능" : "✅ 토큰 없이 통과 — 수정 기능 구현 가능")
+          : (hunt.token ? "❌ 토큰을 찾았는데도 실패(" + r.status + ") — 다른 값이 더 필요" : "❌ 토큰을 못 찾음 — 페이지에 없음"),
+      });
+    } catch (e) {
+      return j({ error: "probeWrite 실패: " + String((e && e.message) || e).slice(0, 200) }, 500);
+    }
   }
 
   // ── 리스트(폴더) 만들기 — 토큰 불필요 ──
