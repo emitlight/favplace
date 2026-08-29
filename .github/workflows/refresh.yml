@@ -39,7 +39,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: 7f53aeca9212909eb3f3f0d62b814c20
         working-directory: app
-        run: npx --yes wrangler@4 pages deploy . --project-name favplace-map --branch main --commit-dirty=true
+        run: npx --yes wrangler@4 pages deploy . --project-name favplace --branch main --commit-dirty=true
 
       - name: 변경분 커밋
         run: |
