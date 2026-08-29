@@ -1,8 +1,8 @@
 name: 매일 즐겨찾기 갱신
 on:
-  # NAVER_COOKIE 시크릿 설정(Phase 3) 후 아래 스케줄 주석 해제 → 매일 새벽 2시 자동 갱신
-  # schedule:
-  #   - cron: "0 17 * * *"   # UTC 17:00 = KST 02:00
+  # 매일 새벽 2시(KST) 자동 갱신. GitHub Secrets 에 NAVER_COOKIE 가 있어야 동작한다.
+  schedule:
+    - cron: "0 17 * * *"   # UTC 17:00 = KST 02:00
   workflow_dispatch: {}      # 수동 실행 버튼
 
 permissions:
@@ -31,6 +31,15 @@ jobs:
 
       - name: 데이터 빌드
         run: python build_data.py
+
+      # CLOUDFLARE_API_TOKEN 시크릿이 있을 때만 배포. 없으면 데이터 커밋까지만 하고 끝난다.
+      - name: Cloudflare Pages 배포
+        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 7f53aeca9212909eb3f3f0d62b814c20
+        working-directory: app
+        run: npx --yes wrangler@4 pages deploy . --project-name favplace-map --branch main --commit-dirty=true
 
       - name: 변경분 커밋
         run: |

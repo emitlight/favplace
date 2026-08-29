@@ -14,6 +14,7 @@ const LITE_SRC = 'data:image/svg+xml;charset=utf8,%3Csvg xmlns=%22http://www.w3.
 const picSrc = u => LITE ? LITE_SRC : u;
 
 let mapBounds = null;
+let LAST_SYNC = 0, LIVE_BUSY = false;
 let PLACES = [], META = {}, map, clusterGroup, selLayer, activeCat = null, activeSub = null, activeRegion = null, searchQ = '', listLimit = 60, userLoc = null, sortMode = 'reco';
 
 /* ---------- 비밀번호 게이트 ---------- */
@@ -36,7 +37,7 @@ async function boot() {
   } catch (e) { console.error('데이터 로드 실패', e); PLACES = []; }
   loadStore();
   initMap(); renderChips(); renderMarkers(); renderList();
-  initSheet(); initSearch(); initLocate(); initRegion(); initTheme(); initMine(); initRecommend(); initNearby(); initGuide(); initSync(); initResponsive();
+  initSheet(); initSearch(); initLocate(); initRegion(); initTheme(); initMine(); initRecommend(); initNearby(); initGuide(); initSync(); initResponsive(); autoRefreshIfStale();
   applyScreenParam();
 }
 
@@ -178,7 +179,8 @@ function sortPlaces(a, b) {
 }
 // 리스트 행 (시안 1b): 썸네일 66 / 이름+카테고리 태그 / 한 줄 소개 / ★·동·거리
 function cardHTML(p) {
-  const thumb = p.ph[0] ? `<img class="thumb" loading="lazy" decoding="async" src="${picSrc(p.ph[0])}" alt="">` : `<div class="thumb skeleton"></div>`;
+  const thumb = p.ph[0] ? `<img class="thumb" loading="lazy" decoding="async" src="${picSrc(p.ph[0])}" alt="">`
+    : (p.fresh ? `<div class="thumb thumb-new">새로<br>추가</div>` : `<div class="thumb skeleton"></div>`);
   const col = catColor(p.c1);
   const tag = p.c2 || catLabel(p.c1);
   const bits = [];
@@ -188,7 +190,7 @@ function cardHTML(p) {
   if (userLoc) bits.push(`<span class="dist">${fmtDist(distTo(p))}</span>`);
   return `<div class="pcard${isVisited(p.id) ? ' visited' : ''}">${thumb}<div class="meta">
     <div class="nmrow">
-      <span class="nm">${isVisited(p.id) ? '<span class="vchk">✓</span> ' : ''}${esc(p.n)}</span>
+      <span class="nm">${isVisited(p.id) ? '<span class="vchk">✓</span> ' : ''}${esc(p.n)}</span>${getRating(p.id) ? `<span class="myrate">★${getRating(p.id)}</span>` : ''}
       <span class="ctag" style="color:${col};background:${col}1F">${esc(tag)}</span>
       ${p.x ? '<span class="tag-closed">폐업</span>' : ''}
     </div>
@@ -211,14 +213,22 @@ function regionHeading(vis) {
 function renderList() {
   const body = $('#sheet-body');
   const vis = visiblePlaces().slice();
-  vis.sort((userLoc && sortMode === 'near') ? (a, b) => distTo(a) - distTo(b) : sortPlaces);
+  vis.sort(
+    sortMode === 'near' && userLoc ? (a, b) => distTo(a) - distTo(b)
+    : sortMode === 'myscore' ? (a, b) => (getRating(b.id) - getRating(a.id)) || sortPlaces(a, b)
+    : sortMode === 'score' ? (a, b) => ((b.sc || 0) - (a.sc || 0)) || sortPlaces(a, b)
+    : sortPlaces);
   const shown = vis.slice(0, listLimit);
   const head = regionHeading(vis);
   let html = `<div class="list-head">
       <span class="lh-l"><b>${esc(head)}</b><span>저장 ${fmtN(vis.length)}곳</span></span>
       <button class="list-refresh" id="lst-refresh">${mapBounds ? '전체 보기' : '지도 새로고침'}</button>
     </div>`;
-  if (userLoc) html += `<div class="list-head" style="padding-top:0"><span class="sortrow"><button class="sortbtn${sortMode === 'near' ? ' on' : ''}" data-s="near">가까운 순</button><button class="sortbtn${sortMode === 'reco' ? ' on' : ''}" data-s="reco">추천 순</button></span></div>`;
+  const sorts = [['reco', '추천순'], ['myscore', '내 별점순'], ['score', '네이버 평점순']];
+  if (userLoc) sorts.push(['near', '가까운 순']);
+  html += `<div class="list-head" style="padding-top:0"><span class="sortrow">` +
+    sorts.map(([k, label]) => `<button class="sortbtn${sortMode === k ? ' on' : ''}" data-s="${k}">${label}</button>`).join('') +
+    `</span></div>`;
   html += shown.map(cardHTML).join('<div class="divider"></div>');
   if (vis.length > listLimit) html += `<button id="more" class="act" style="margin-top:14px">더 보기 (${vis.length - listLimit}곳)</button>`;
   if (!vis.length) html += `<div style="text-align:center;padding:44px 0;color:var(--ink-3)"><span class="pin" style="width:34px;height:34px;opacity:.35"></span><p style="margin:14px 0 0;font-size:14px;color:var(--ink-2)">조건에 맞는 장소가 없어요</p><p style="margin:4px 0 0;font-size:12.5px">필터를 바꾸거나 지역을 넓혀보세요</p></div>`;
@@ -317,6 +327,7 @@ function setSheet(state) {
   document.body.dataset.snap = cur;
   const fab = $('#fab'); if (fab) fab.style.display = (cur === 'peek' || off) ? 'flex' : 'none';
   const lb = $('#btn-locate'); if (lb) lb.style.display = (cur === 'peek' || off) ? 'flex' : 'none';
+  const rb = $('#btn-refresh'); if (rb) rb.style.display = (cur === 'peek' || off) ? 'flex' : 'none';
   const tab = $('#sheet-tab'); if (tab) tab.classList.toggle('on', off);
   updateSheetTab();
 }
@@ -417,6 +428,12 @@ function initSearch() {
 let myLocMarker = null;
 function sheetState() { return SORDER[sIdx]; }
 function initLocate() {
+  const rb = $('#btn-refresh');
+  if (rb) rb.onclick = async () => {
+    rb.classList.add('busy');
+    await liveRefresh(false);
+    rb.classList.remove('busy');
+  };
   const btn = $('#btn-locate'); if (!btn) return;
   btn.onclick = () => {
     if (!navigator.geolocation) { alert('이 기기는 위치를 지원하지 않아요.'); return; }
@@ -580,7 +597,7 @@ function applyRegion(r) {
 
 /* ---------- 나만의 기록 (방문·메모·리스트) : 기기 저장 ---------- */
 const SKEY = 'hymap_store_v1';
-let Store = { visited: [], memo: {}, lists: [] };
+let Store = { visited: [], memo: {}, lists: [], rating: {} };
 let activeMine = null;
 
 /* 큐레이션 리스트 (배포 데이터 lists.json — 하영이 준 장소 정보로 채움) */
@@ -613,7 +630,7 @@ function curatedMembers(id) {
 }
 function curatedCount(id) { return curatedMembers(id).length; }
 function loadStore() {
-  try { const s = JSON.parse(localStorage.getItem(SKEY)); if (s) Store = { visited: s.visited || [], memo: s.memo || {}, lists: s.lists || [] }; } catch (e) {}
+  try { const s = JSON.parse(localStorage.getItem(SKEY)); if (s) Store = { visited: s.visited || [], memo: s.memo || {}, lists: s.lists || [], rating: s.rating || {} }; } catch (e) {}
 }
 function saveStore() { try { localStorage.setItem(SKEY, JSON.stringify(Store)); } catch (e) {} }
 function isVisited(id) { return Store.visited.includes(String(id)); }
@@ -624,17 +641,59 @@ function listById(id) { return Store.lists.find(l => l.id === id); }
 function newList(name) { const id = 'L' + Date.now().toString(36) + Math.floor(Math.random() * 900 + 100); Store.lists.push({ id, name: (name || '새 리스트').trim(), ids: [] }); saveStore(); return id; }
 function toggleInList(listId, pid) { const l = listById(listId); if (!l) return; pid = String(pid); const i = l.ids.indexOf(pid); if (i < 0) l.ids.push(pid); else l.ids.splice(i, 1); saveStore(); }
 function deleteList(id) { Store.lists = Store.lists.filter(l => l.id !== id); if (activeMine && activeMine.type === 'list' && activeMine.id === id) activeMine = null; saveStore(); }
+
+/* ================= 내 별점 (1~5) — 기기 저장 ================= */
+function getRating(id) { return Store.rating[String(id)] || 0; }
+function setRating(id, n) {
+  id = String(id); n = Number(n) || 0;
+  if (n <= 0 || getRating(id) === n) delete Store.rating[id];   // 같은 별 다시 누르면 해제
+  else Store.rating[id] = Math.max(1, Math.min(5, n));
+  saveStore();
+}
+function ratedCount() { return Object.keys(Store.rating).length; }
+
+// 별 5개 입력 위젯
+function starPickerHTML(id) {
+  const cur = getRating(id);
+  let h = '<div class="stars" id="m-stars" role="group" aria-label="내 별점">';
+  for (let i = 1; i <= 5; i++) {
+    h += '<button class="star' + (i <= cur ? ' on' : '') + '" data-n="' + i + '" aria-label="' + i + '점">★</button>';
+  }
+  h += '<span class="star-val">' + (cur ? cur + '점' : '아직 없음') + '</span>';
+  if (cur) h += '<button class="star-clear" id="m-star-clear">지우기</button>';
+  return h + '</div>';
+}
+function bindStarPicker(p, root) {
+  const wrap = $('#m-stars', root); if (!wrap) return;
+  const redraw = () => {
+    const cur = getRating(p.id);
+    $$('.star', wrap).forEach(b => b.classList.toggle('on', Number(b.dataset.n) <= cur));
+    const v = $('.star-val', wrap); if (v) v.textContent = cur ? cur + '점' : '아직 없음';
+    // 상세를 보는 중에는 renderList() 를 부르면 시트 내용이 통째로 교체돼 상세가 사라진다.
+    // 목록 뱃지·별점 필터는 상세를 닫을 때(closeDetail -> renderList) 반영된다.
+  };
+  $$('.star', wrap).forEach(b => b.onclick = () => { setRating(p.id, Number(b.dataset.n)); redraw(); });
+  const cl = $('#m-star-clear', root);
+  if (cl) cl.onclick = () => { setRating(p.id, 0); redraw(); };
+}
+
 function matchMine(p) {
   if (!activeMine) return true;
   if (activeMine.type === 'visited') return isVisited(p.id);
   if (activeMine.type === 'unvisited') return !isVisited(p.id);
   if (activeMine.type === 'list') { const l = listById(activeMine.id); return !!(l && l.ids.includes(String(p.id))); }
+  if (activeMine.type === 'rated') return getRating(p.id) > 0;
+  if (activeMine.type === 'unrated') return getRating(p.id) === 0;
+  if (activeMine.type === 'minrate') return getRating(p.id) >= (activeMine.n || 1);
   return true;
 }
 function mineLabel() {
   if (!activeMine) return '내 기록';
   if (activeMine.type === 'visited') return '가본 곳';
   if (activeMine.type === 'unvisited') return '안 가본 곳';
+  if (activeMine.type === 'rated') return '별점 매긴 곳';
+  if (activeMine.type === 'unrated') return '별점 없는 곳';
+  if (activeMine.type === 'minrate') return '★' + (activeMine.n || 1) + ' 이상';
   if (activeMine.type === 'list') { const l = listById(activeMine.id); return l ? l.name : '리스트'; }
   if (activeMine.type === 'curated') { const l = curatedById(activeMine.id); return l ? l.name : '리스트'; }
   return '내 기록';
@@ -659,6 +718,25 @@ function renderMine() {
     b.onclick = () => applyMine(f === 'all' ? null : { type: f });
     body.appendChild(b);
   });
+  // 별점 필터
+  const rt = document.createElement('div'); rt.className = 'sec-title';
+  rt.style.margin = '20px 4px 8px'; rt.textContent = '내 별점';
+  body.appendChild(rt);
+  const rated = ratedCount();
+  const rateRows = [
+    ['minrate5', '★5', PLACES.filter(x => x.map && getRating(x.id) === 5).length, { type: 'minrate', n: 5 }],
+    ['minrate4', '★4 이상', PLACES.filter(x => x.map && getRating(x.id) >= 4).length, { type: 'minrate', n: 4 }],
+    ['minrate3', '★3 이상', PLACES.filter(x => x.map && getRating(x.id) >= 3).length, { type: 'minrate', n: 3 }],
+    ['rated', '별점 매긴 곳', rated, { type: 'rated' }],
+    ['unrated', '아직 별점 없는 곳', allN - rated, { type: 'unrated' }],
+  ];
+  rateRows.forEach(([k, label, n, f]) => {
+    const b = document.createElement('button'); b.className = 'rgrow';
+    b.innerHTML = `<span class="rgname">${label}</span><span class="rgcnt">${n}</span>`;
+    b.onclick = () => applyMine(f);
+    body.appendChild(b);
+  });
+
   if (CURATED.length) {
     const ct = document.createElement('div'); ct.className = 'sec-title'; ct.style.margin = '20px 4px 8px'; ct.textContent = '큐레이션 리스트'; body.appendChild(ct);
     CURATED.forEach(l => {
@@ -737,8 +815,11 @@ function detailMineHTML(p) {
     <div class="mine-actions">
       <button class="mine-toggle${vis ? ' on' : ''}" id="m-visited">${vis ? '✓ 가봤어요' : '가봤어요'}</button>
       <button class="mine-toggle" id="m-list">☆ 리스트에 추가</button>
+      <button class="mine-toggle danger" id="m-del">네이버에서 삭제</button>
     </div>
     <div id="m-listpick" class="listpick" hidden></div>
+    <div class="sec-title">내 별점</div>
+    ${starPickerHTML(p.id)}
     <div class="sec-title">내 메모</div>
     <textarea id="m-memo" class="memo-input" rows="2" placeholder="이곳에 대한 나만의 메모를 남겨보세요">${esc(memo)}</textarea>
     <div id="m-tags" class="mine-tags"></div>
@@ -779,6 +860,8 @@ function bindDetailMine(p, body) {
   const vb = $('#m-visited', body); if (vb) vb.onclick = () => { toggleVisited(p.id); const v = isVisited(p.id); vb.classList.toggle('on', v); vb.textContent = v ? '✓ 가봤어요' : '가봤어요'; renderMarkers(); };
   const lb = $('#m-list', body), pick = $('#m-listpick', body);
   if (lb) lb.onclick = () => { pick.hidden = !pick.hidden; if (!pick.hidden) renderListPick(p); };
+  bindStarPicker(p, body);
+  const db = $('#m-del', body); if (db) db.onclick = () => deletePlaceFromNaver(p);
   const mm = $('#m-memo', body);
   if (mm) { let t; mm.oninput = () => { clearTimeout(t); t = setTimeout(() => setMemo(p.id, mm.value), 400); }; mm.onblur = () => setMemo(p.id, mm.value); }
 }
@@ -1066,6 +1149,127 @@ function toast(msg) {
   t.classList.add('on');
   clearTimeout(toast._t);
   toast._t = setTimeout(() => t.classList.remove('on'), 3200);
+}
+
+
+/* ================= 네이버 원본 실시간 반영 =================
+   스냅샷(이름·좌표·카테고리)만으로 지도를 즉시 갱신한다.
+   사진·평점·메뉴는 PC 빌드에서만 붙으므로, 새 장소는 '사진 준비중'으로 표시된다. */
+const MCID_MAP = {
+  DINING: ['음식점', '한식'], CAFE: ['카페', '커피'], BAR: ['술집바', '술집·바'],
+  ACCOMMODATION: ['숙박', '호텔'], TRAVEL: ['명소', '관광명소'], SHOPPING: ['쇼핑', '마트'],
+  LIFE_CULTURE: ['문화', '복합문화시설'], ENTERTAINMENT: ['문화', '복합문화시설'],
+  EDUCATION: ['생활', '교육'], CAR: ['생활', '자동차'],
+};
+function parseRegion(addr) {
+  const t = String(addr || '').split(/\s+/);
+  const sido = t[0] || '';
+  const gu = t[1] && /(시|군|구)$/.test(t[1]) ? (t[2] && /구$/.test(t[2]) ? t[1] + ' ' + t[2] : t[1]) : '';
+  const dong = t.find(x => /(동|읍|면|리)$/.test(x) && x !== gu) || '';
+  return { sido, gu, dong, rg: [sido, gu].filter(Boolean).join(' ') };
+}
+function placeFromBookmark(b) {
+  const [c1, c2] = MCID_MAP[b.mcid] || ['생활', '기타'];
+  const r = parseRegion(b.address);
+  return {
+    id: String(b.sid || ('bm' + b.bookmarkId)),
+    bookmarkId: b.bookmarkId,
+    n: b.name, la: Number(b.py), lo: Number(b.px),
+    c1: c1, c2: c2, nc: b.mcidName || c2,
+    sido: r.sido, gu: r.gu, dong: r.dong, rg: r.rg,
+    memo: b.memo || '', ph: [], mn: [], sc: 0, rv: 0, en: 0,
+    map: !!(Number(b.py) && Number(b.px)),
+    fresh: true,      // 아직 사진·평점이 안 붙은 새 장소
+  };
+}
+
+// 스냅샷을 PLACES 에 병합 — 새 장소 추가, 사라진 장소 제거
+function mergeSnapshot(snap) {
+  const remote = new Map();
+  snap.bookmarks.forEach(b => { if (b.sid || b.bookmarkId) remote.set(String(b.sid || ('bm' + b.bookmarkId)), b); });
+
+  const before = PLACES.length;
+  const gone = PLACES.filter(p => !remote.has(String(p.id)));
+  PLACES = PLACES.filter(p => remote.has(String(p.id)));
+
+  // 기존 장소에는 bookmarkId 를 붙여둔다(삭제할 때 필요)
+  PLACES.forEach(p => { const b = remote.get(String(p.id)); if (b) p.bookmarkId = b.bookmarkId; });
+
+  const known = new Set(PLACES.map(p => String(p.id)));
+  const added = [];
+  remote.forEach((b, key) => {
+    if (known.has(key)) return;
+    const np = placeFromBookmark(b);
+    if (np.map) { PLACES.push(np); added.push(np); }
+  });
+
+  LAST_SYNC = snap.fetchedAt || Date.now();
+  try { localStorage.setItem('hymap_lastsync', String(LAST_SYNC)); } catch (e) {}
+  renderChips(); renderMarkers(); renderList();
+  return { added: added.length, removed: gone.length, total: PLACES.length };
+}
+
+// 상단에서 바로 누르는 수동 갱신
+async function liveRefresh(silent) {
+  if (LIVE_BUSY) return;
+  LIVE_BUSY = true;
+  if (!silent) toast('네이버에서 최신 목록 가져오는 중…');
+  try {
+    const r = await fetch('/naver-sync?action=snapshot', { cache: 'no-store' });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) {
+      if (!silent) toast(d.error ? ('갱신 실패 — ' + d.error) : ('갱신 실패 (HTTP ' + r.status + ')'));
+      return null;
+    }
+    SYNC.snap = d;
+    const res = mergeSnapshot(d);
+    if (!silent) {
+      toast(res.added || res.removed
+        ? `갱신 완료 — 새 장소 ${res.added}곳, 사라진 곳 ${res.removed}곳 (총 ${res.total}곳)`
+        : `이미 최신입니다 (${res.total}곳)`);
+    }
+    return res;
+  } catch (e) {
+    if (!silent) toast('갱신 실패 — ' + String(e.message || e).slice(0, 60));
+    return null;
+  } finally { LIVE_BUSY = false; }
+}
+
+// 하루 한 번 자동 갱신 (앱을 열 때 마지막 갱신이 24시간 지났으면)
+function autoRefreshIfStale() {
+  let last = 0;
+  try { last = Number(localStorage.getItem('hymap_lastsync') || 0); } catch (e) {}
+  if (Date.now() - last < 24 * 60 * 60 * 1000) return;
+  liveRefresh(true);
+}
+
+/* 장소를 네이버 즐겨찾기에서 삭제 */
+async function deletePlaceFromNaver(p) {
+  const pre = await fetch('/naver-sync', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ action: 'deletePlace', sids: [String(p.id)] }),
+  }).then(r => r.json().catch(() => ({}))).catch(e => ({ error: String(e.message || e) }));
+
+  if (pre.error) { toast('삭제할 수 없어요 — ' + pre.error); return; }
+  const info = (pre.preview && pre.preview[0]) || {};
+  const msg = [
+    '"' + p.n + '"을(를) 네이버 즐겨찾기에서 삭제합니다.', '',
+    '소속 리스트 ' + (info.폴더수 != null ? info.폴더수 : '?') + '곳에서 모두 빠집니다.',
+    '되돌릴 수 없습니다. 진행할까요?',
+  ].join('\n');
+  if (!window.confirm(msg)) return;
+
+  const res = await fetch('/naver-sync', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ action: 'deletePlace', sids: [String(p.id)], confirm: true }),
+  }).then(r => r.json().catch(() => ({}))).catch(e => ({ error: String(e.message || e) }));
+
+  if (res.error || !res.ok) { toast('삭제 실패 — ' + (res.error || '네이버가 거부했어요')); return; }
+  const done = (res['삭제됨'] || []).length;
+  if (!done) { toast('삭제되지 않았어요 (다른 리스트에 남아있을 수 있습니다)'); return; }
+  toast('"' + p.n + '" 삭제 완료');
+  PLACES = PLACES.filter(x => String(x.id) !== String(p.id));
+  closeDetail(); renderChips(); renderMarkers(); renderList();
 }
 
 /* ================= 네이버 원본 관리 (가져오기 · 폴더 · 삭제) =================

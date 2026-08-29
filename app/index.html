@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-<link rel="stylesheet" href="./css/style.css?v=38" />
+<link rel="stylesheet" href="./css/style.css?v=41" />
 </head>
 <body>
 
@@ -47,6 +47,11 @@
     </button>
     <button id="btn-info" class="avatar-btn" aria-label="가이드와 현황">하영</button>
   </header>
+
+  <!-- 네이버 최신화 (지도 위 원형 버튼) -->
+  <button id="btn-refresh" class="mapbtn refresh" aria-label="네이버에서 최신화">
+    <svg viewBox="0 0 24 24" class="ic"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><polyline points="20 5 20 11 14 11"/></svg>
+  </button>
 
   <!-- 내 위치 (지도 위 원형 버튼) -->
   <button id="btn-locate" class="mapbtn" aria-label="내 위치">
@@ -193,7 +198,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script src="./js/config.js?v=38"></script>
-<script src="./js/app.js?v=38"></script>
+<script src="./js/config.js?v=41"></script>
+<script src="./js/app.js?v=41"></script>
 </body>
 </html>

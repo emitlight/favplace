@@ -58,6 +58,7 @@ function indexBookmarks(d) {
     if (!b.bookmarkId) continue;
     const rec = {
       bookmarkId: b.bookmarkId, sid: b.sid, name: b.name, memo: b.memo,
+      px: b.px, py: b.py, address: b.address, mcid: b.mcid, mcidName: b.mcidName, type: b.type,
       folderIds: (e.folderMappings || []).map(m => m.folderId),
     };
     byId[b.bookmarkId] = rec;
@@ -155,7 +156,9 @@ export async function onRequestGet({ request, env }) {
         fetchedAt: Date.now(),
         folders: folderList(d),
         bookmarks: Object.values(byId).map(b => ({
-          bookmarkId: b.bookmarkId, sid: b.sid, name: b.name, memo: b.memo || "", folderIds: b.folderIds,
+          bookmarkId: b.bookmarkId, sid: b.sid, name: b.name, memo: b.memo || "",
+          px: b.px, py: b.py, address: b.address || "", mcid: b.mcid || "", mcidName: b.mcidName || "",
+          type: b.type || "place", folderIds: b.folderIds,
         })),
       });
     }
@@ -225,6 +228,63 @@ export async function onRequestPost({ request, env }) {
     }
   }
 
+  // ── 장소를 네이버 즐겨찾기에서 완전히 삭제 ──
+  // 소속된 모든 폴더에서 빼면 삭제된다(v3 응답의 removedBookmarkIds 로 확인).
+  if (action === "deletePlace") {
+    let snap; try { snap = await fetchSync(cookie); } catch (e) { return j({ error: String(e.message || e) }, 502); }
+    const { bySid, byId } = indexBookmarks(snap);
+
+    const targets = [];
+    const missing = [];
+    for (const raw of (body.sids || [])) {
+      const rec = bySid[String(raw)];
+      if (rec) targets.push(rec); else missing.push(String(raw));
+    }
+    for (const raw of (body.bookmarkIds || [])) {
+      const rec = byId[Number(raw)];
+      if (rec && !targets.includes(rec)) targets.push(rec);
+    }
+    if (!targets.length) return j({ error: "대상을 찾지 못했습니다", missing }, 404);
+    if (targets.length > MAX_BATCH) return j({ error: `한 번에 최대 ${MAX_BATCH}곳까지만 가능` }, 400);
+
+    if (!body.confirm) {
+      return j({
+        dryRun: true, count: targets.length, missing,
+        preview: targets.map(t => ({ sid: t.sid, name: t.name, 폴더수: t.folderIds.length })),
+        note: "실행하려면 confirm:true — 네이버 즐겨찾기에서 완전히 삭제됩니다",
+      });
+    }
+
+    // 폴더별로 묶어서 호출 수를 줄인다
+    const byFolder = new Map();
+    for (const t of targets) {
+      for (const f of t.folderIds) {
+        if (!byFolder.has(f)) byFolder.set(f, []);
+        byFolder.get(f).push(t.bookmarkId);
+      }
+    }
+    const removed = new Set(), unmapped = new Set(), errors = [];
+    for (const [folderId, ids] of byFolder) {
+      const r = await fetch(`${PAGES_ORIGIN}/save-pages/api/maps-bookmark/v3/folders/${folderId}/mapping`, {
+        method: "DELETE",
+        headers: naverHeaders(cookie, { "content-type": "application/json" }),
+        body: JSON.stringify({ bookmarkIds: ids }),
+      });
+      const text = await r.text();
+      let out; try { out = JSON.parse(text); } catch { out = {}; }
+      if (!r.ok) { errors.push({ folderId, status: r.status }); continue; }
+      (out.removedBookmarkIds || []).forEach(x => removed.add(x));
+      (out.unmappedBookmarkIds || []).forEach(x => unmapped.add(x));
+    }
+    const stillThere = targets.filter(t => !removed.has(t.bookmarkId));
+    return j({
+      ok: errors.length === 0,
+      삭제됨: targets.filter(t => removed.has(t.bookmarkId)).map(t => ({ sid: t.sid, name: t.name })),
+      남아있음: stillThere.map(t => ({ sid: t.sid, name: t.name })),
+      errors,
+    });
+  }
+
   // ── 리스트(폴더) 만들기 — 토큰 불필요 ──
   if (action === "createFolder") {
     const name = String(body.name || "").trim();
@@ -289,7 +349,7 @@ export async function onRequestPost({ request, env }) {
     return j({
       error: "아직 구현되지 않은 action",
       requested: action,
-      supported: ["unmapFolder", "createFolder", "deleteFolder", "probeWrite"],
+      supported: ["unmapFolder", "deletePlace", "createFolder", "deleteFolder"],
       note: "메모·이름변경·폴더에 장소 추가는 save-widget 북마크 PATCH가 필요한데 그 바디의 token 출처를 아직 못 찾았음",
     }, 501);
   }
