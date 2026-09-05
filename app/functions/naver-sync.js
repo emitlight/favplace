@@ -1,57 +1,410 @@
 // Cloudflare Pages Function — /naver-sync
-// favplace의 변경(삭제·폴더·메모)을 네이버 즐겨찾기 "원본"에 반영하기 위한 스캐폴드.
+// favplace의 변경을 네이버 즐겨찾기 "원본"에 반영한다.
 //
-// ⚠️ 안전장치 (되돌리기 어려운 작업이라 이중 잠금):
-//   1) 환경변수 NAVER_COOKIE 가 없으면 아무것도 안 함(503).
-//   2) 쓰기(삭제/수정)는 환경변수 NAVER_SYNC_WRITE === "on" 일 때만 허용.
-//   3) 아직 네이버 "쓰기 API 형식"을 캡처하지 않았으므로, 쓰기는 501(미구현)로 막혀 있음.
-//      → 아래 TODO에 캡처한 요청(메서드/URL/헤더/바디)을 채우면 그때 실제로 동작.
+// ⚠️ 되돌리기 어려운 작업이라 3중 잠금:
+//   1) 환경변수 NAVER_COOKIE 없으면 아무것도 안 함(503)
+//   2) 쓰기는 NAVER_SYNC_WRITE === "on" 일 때만 허용(403)
+//   3) 요청 바디에 confirm:true 가 없으면 실행 안 하고 "무엇을 할 것인지"만 되돌려줌(dry-run)
 //
-// 필요한 것(하영이 제공):
-//   A) NAVER_COOKIE  : 네이버 로그인 세션 쿠키. Cloudflare 대시보드에서 "본인이 직접" 시크릿으로 등록.
-//                      (Chrome에서 map.naver.com 로그인 → DevTools > Application > Cookies →
-//                       NID_AUT, NID_SES 값 → "NID_AUT=...; NID_SES=..." 형태로 저장)
-//   B) 쓰기 API 캡처 : 네이버 지도에서 즐겨찾기 삭제/메모수정/폴더이동을 실제로 하면서
-//                      DevTools > Network 에서 그 요청의 [Method, Request URL, Request Headers(쿠키는 가림),
-//                      Request Payload(Body)] 와 응답을 캡처해서 전달. → 아래 TODO 채움.
+// 2026-08-17 HAR 캡처로 확인된 네이버 API (상세는 저장소 NOTES_api.md):
+//   · DELETE /save-pages/api/maps-bookmark/v3/folders/{folderId}/mapping
+//       body {"bookmarkIds":[...]} → 그 폴더에서 제거. **토큰 불필요, 쿠키만 필요.**
+//       응답 unmappedBookmarkIds(폴더에서 뺌) / removedBookmarkIds(즐겨찾기 자체가 삭제됨) 로 구분됨.
+//   · PATCH /save-widget/api/maps-bookmark/bookmarks/{bookmarkId}
+//       이름·메모·폴더이동. 바디에 정체불명의 token 이 필요해서 아직 미구현(501).
+//
+// ⚠️ 경로에 쓰는 값은 sid(장소ID)가 아니라 bookmarkId(즐겨찾기 레코드ID)다.
+//    sid → bookmarkId 변환은 action=resolve 로 얻는다.
 
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "content-type" };
 const j = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { ...CORS, "content-type": "application/json" } });
 export const onRequestOptions = () => new Response(null, { status: 204, headers: CORS });
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+const PAGES_ORIGIN = "https://pages.map.naver.com";
+const MAX_BATCH = 25;   // 한 번에 건드릴 수 있는 최대 개수
+
 function naverHeaders(cookie, extra = {}) {
-  return { "User-Agent": UA, "Accept": "application/json, text/plain, */*", "Accept-Language": "ko-KR,ko;q=0.9", "Referer": "https://map.naver.com/", "Cookie": cookie, ...extra };
+  return {
+    "User-Agent": UA,
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "ko-KR,ko;q=0.9",
+    "Origin": PAGES_ORIGIN,
+    "Referer": PAGES_ORIGIN + "/save-pages/pc/detail-list/",
+    "Cookie": cookie,
+    ...extra,
+  };
 }
 
-// 상태 확인 (읽기 전용, 안전)
+// 즐겨찾기 전체 동기화 페이로드 (읽기 전용)
+async function fetchSync(cookie) {
+  const r = await fetch("https://map.naver.com/p/api/bookmark", {
+    headers: {
+      "User-Agent": UA, "Accept": "application/json", "Accept-Language": "ko-KR,ko;q=0.9",
+      "Referer": "https://map.naver.com/", "Cookie": cookie,
+    },
+  });
+  if (!r.ok) throw new Error("bookmark sync 실패: HTTP " + r.status);
+  const d = await r.json();
+  const bs = ((d.my || {}).bookmarkSync || {}).bookmarks;
+  if (!bs) throw new Error("응답에 북마크가 없음 — 쿠키가 만료됐을 수 있음");
+  return d;
+}
+
+function indexBookmarks(d) {
+  const bySid = {}, byId = {};
+  for (const e of d.my.bookmarkSync.bookmarks) {
+    const b = e.bookmark || {};
+    if (!b.bookmarkId) continue;
+    const rec = {
+      bookmarkId: b.bookmarkId, sid: b.sid, name: b.name, memo: b.memo,
+      px: b.px, py: b.py, address: b.address, mcid: b.mcid, mcidName: b.mcidName, type: b.type,
+      folderIds: (e.folderMappings || []).map(m => m.folderId),
+    };
+    byId[b.bookmarkId] = rec;
+    if (b.sid) bySid[b.sid] = rec;
+  }
+  return { bySid, byId };
+}
+
+function folderList(d) {
+  return (d.my.folderSync.folders || []).map(f => {
+    const b = f.folder || f;
+    return { folderId: b.folderId, name: b.name, count: b.bookmarkCount, isDefault: !!b.isDefaultFolder };
+  });
+}
+
+
+// 북마크 PATCH에 필요한 token 을 서버에서 직접 찾아본다.
+// 캡처된 HAR의 어떤 API 응답에도 없었으므로, 위젯/목록 페이지의 HTML·JS 안에 있을 것으로 보고 훑는다.
+const TOKEN_PAGES = [
+  "https://pages.map.naver.com/save-pages/pc/all-list?from=map&lang=ko",
+  "https://pages.map.naver.com/save-widget/pc/index.html",
+  "https://pages.map.naver.com/save-widget/",
+  "https://map.naver.com/p/favorite/place",
+];
+// 캡처된 토큰은 44자 base64url (32바이트). 키 이름과 함께 있는 형태를 우선 찾는다.
+const TOKEN_PATTERNS = [
+  /["']?token["']?\s*[:=]\s*["']([A-Za-z0-9_\-+/]{20,64}={0,2})["']/i,
+  /csrf[^"']{0,12}["']?\s*[:=]\s*["']([A-Za-z0-9_\-+/]{20,64}={0,2})["']/i,
+];
+
+async function huntToken(cookie, only) {
+  const tried = [];
+  const pages = only ? [only] : TOKEN_PAGES;
+  const CAP = 400000;   // 페이지당 400KB 까지만 검사 (워커 CPU 한도 보호)
+  for (const url of pages) {
+    try {
+      const r = await fetch(url, {
+        headers: {
+          "User-Agent": UA,
+          "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
+          "Accept-Language": "ko-KR,ko;q=0.9",
+          "Referer": "https://map.naver.com/",
+          "Cookie": cookie,
+        },
+        cf: { cacheTtl: 0 },
+      });
+      let html = await r.text();
+      const full = html.length;
+      if (html.length > CAP) html = html.slice(0, CAP);
+      const hit = { url, status: r.status, bytes: full, scanned: html.length,
+                    tokenWord: (html.match(/token/gi) || []).length };
+      for (const re of TOKEN_PATTERNS) {
+        const m = re.exec(html);
+        if (m && m[1]) { hit.found = true; hit.len = m[1].length; tried.push(hit); return { token: m[1], from: url, tried }; }
+      }
+      // 토큰 단어가 보이면 주변 문맥을 짧게 남겨 다음 단서로 쓴다
+      if (hit.tokenWord) {
+        const i = html.search(/token/i);
+        hit.context = html.slice(Math.max(0, i - 60), i + 90).replace(/\s+/g, " ");
+      }
+      tried.push(hit);
+    } catch (e) {
+      tried.push({ url, error: String((e && e.message) || e).slice(0, 100) });
+    }
+  }
+  return { token: null, tried };
+}
+
+/* ---------- GET: 상태 확인 · sid→bookmarkId 변환 (모두 읽기 전용) ---------- */
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const action = url.searchParams.get("action") || "ping";
   const hasCookie = !!env.NAVER_COOKIE;
   const writeEnabled = hasCookie && env.NAVER_SYNC_WRITE === "on";
-  if (action === "ping") return j({ ok: true, hasCookie, writeEnabled, note: writeEnabled ? "쓰기 준비됨(단, 쓰기 API 형식 구현 필요)" : "읽기/상태만 가능" });
-  if (!hasCookie) return j({ error: "NAVER_COOKIE 미설정 — 하영이 Cloudflare에 직접 등록해야 동작" }, 503);
-  return j({ error: "지원하지 않는 action", allowed: ["ping"] }, 400);
+
+  if (action === "ping") {
+    return j({
+      ok: true, hasCookie, writeEnabled,
+      supported: { unmapFolder: true, delete: "unmapFolder로 모든 폴더에서 빼면 삭제됨", createFolder: true, deleteFolder: "빈 리스트만", memo: false, rename: false, moveFolder: false },
+      note: writeEnabled ? "쓰기 가능 (단, confirm:true 필요)" : "읽기/상태만 가능",
+    });
+  }
+  if (!hasCookie) return j({ error: "NAVER_COOKIE 미설정 — Cloudflare에 직접 등록해야 동작" }, 503);
+
+  try {
+    if (action === "folders") {
+      return j({ ok: true, folders: folderList(await fetchSync(env.NAVER_COOKIE)) });
+    }
+    if (action === "snapshot") {
+      // 네이버에 저장된 "지금 이 순간"의 즐겨찾기 전체 — 앱이 로컬 places.json 과 대조하는 용도
+      const d = await fetchSync(env.NAVER_COOKIE);
+      const { byId } = indexBookmarks(d);
+      return j({
+        ok: true,
+        fetchedAt: Date.now(),
+        folders: folderList(d),
+        bookmarks: Object.values(byId).map(b => ({
+          bookmarkId: b.bookmarkId, sid: b.sid, name: b.name, memo: b.memo || "",
+          px: b.px, py: b.py, address: b.address || "", mcid: b.mcid || "", mcidName: b.mcidName || "",
+          type: b.type || "place", folderIds: b.folderIds,
+        })),
+      });
+    }
+    if (action === "resolve") {
+      const sids = (url.searchParams.get("sids") || "").split(",").map(s => s.trim()).filter(Boolean);
+      if (!sids.length) return j({ error: "sids 파라미터 필요 (쉼표 구분)" }, 400);
+      const { bySid } = indexBookmarks(await fetchSync(env.NAVER_COOKIE));
+      const found = {}, missing = [];
+      for (const s of sids) { if (bySid[s]) found[s] = bySid[s]; else missing.push(s); }
+      return j({ ok: true, found, missing });
+    }
+  } catch (e) {
+    return j({ error: String(e.message || e) }, 502);
+  }
+  return j({ error: "지원하지 않는 action", allowed: ["ping", "folders", "resolve", "snapshot"] }, 400);
 }
 
-// 쓰기(삭제/메모/폴더) — 이중 잠금 + 캡처 전까지 501
+/* ---------- POST: 쓰기 ---------- */
 export async function onRequestPost({ request, env }) {
   if (!env.NAVER_COOKIE) return j({ error: "NAVER_COOKIE 미설정" }, 503);
-  if (env.NAVER_SYNC_WRITE !== "on") return j({ error: "쓰기 비활성(NAVER_SYNC_WRITE=on 필요)" }, 403);
+  if (env.NAVER_SYNC_WRITE !== "on") return j({ error: "쓰기 비활성 (NAVER_SYNC_WRITE=on 필요)" }, 403);
 
   let body; try { body = await request.json(); } catch { return j({ error: "bad json" }, 400); }
   const action = String(body.action || "");
   const cookie = env.NAVER_COOKIE;
 
-  // ── TODO: 캡처한 네이버 쓰기 API를 여기에 구현 ──────────────────────────
-  // 예) 즐겨찾기 삭제:
-  //   const r = await fetch("https://<캡처한 URL>", {
-  //     method: "<캡처한 METHOD>",
-  //     headers: naverHeaders(cookie, { "content-type": "application/json" }),
-  //     body: JSON.stringify({ /* 캡처한 payload 형식 (body.sid 등 사용) */ }),
-  //   });
-  //   return j({ ok: r.ok, status: r.status });
-  // ────────────────────────────────────────────────────────────────────
-  return j({ error: "쓰기 API 미구현 — 네이버 요청 형식을 캡처해 이 함수에 채워야 실제 반영됨", requested: action }, 501);
+  // ── 쓰기 권한 시험 (no-op) ──
+  // 북마크 PATCH가 정말 token 없이 되는지 확인한다. 지금 저장된 값을 그대로 다시 써서
+  // 데이터는 전혀 바뀌지 않는다(displayName/memo/url 원본 유지, mapping 비움).
+  if (action === "probeWrite") {
+    try {
+      const bid = Number(body.bookmarkId);
+      if (!bid) return j({ error: "bookmarkId 필요 — 먼저 '지금 가져와서 비교하기'를 눌러주세요" }, 400);
+
+      const hunt = await huntToken(cookie, body.page);
+
+      // 값은 클라이언트가 넘겨준 현재 값 그대로 (데이터 불변)
+      const payload = {
+        displayName: String(body.displayName || ""),
+        memo: String(body.memo || ""),
+        url: String(body.url || ""),
+        mapping: { addFolderIds: [], removeFolderIds: [] },
+        cv: "v1.4.7",
+      };
+      if (hunt.token) payload.token = hunt.token;
+
+      const r = await fetch(`${PAGES_ORIGIN}/save-widget/api/maps-bookmark/bookmarks/${bid}?cv=v1.4.7&t=${Date.now()}`, {
+        method: "PATCH",
+        headers: naverHeaders(cookie, { "content-type": "application/json" }),
+        body: JSON.stringify(payload),
+      });
+      const text = await r.text();
+      let out; try { out = JSON.parse(text); } catch { out = { raw: text.slice(0, 200) }; }
+
+      return j({
+        ok: r.ok, status: r.status,
+        토큰찾음: !!hunt.token,
+        토큰출처: hunt.from || null,
+        탐색기록: hunt.tried,
+        응답: out,
+        해석: r.ok
+          ? (hunt.token ? "✅ 토큰을 찾아 통과 — 수정 기능 구현 가능" : "✅ 토큰 없이 통과 — 수정 기능 구현 가능")
+          : (hunt.token ? "❌ 토큰을 찾았는데도 실패(" + r.status + ") — 다른 값이 더 필요" : "❌ 토큰을 못 찾음 — 페이지에 없음"),
+      });
+    } catch (e) {
+      return j({ error: "probeWrite 실패: " + String((e && e.message) || e).slice(0, 200) }, 500);
+    }
+  }
+
+  // ── 장소를 네이버 즐겨찾기에서 완전히 삭제 ──
+  // 소속된 모든 폴더에서 빼면 삭제된다(v3 응답의 removedBookmarkIds 로 확인).
+  if (action === "deletePlace") {
+    let snap; try { snap = await fetchSync(cookie); } catch (e) { return j({ error: String(e.message || e) }, 502); }
+    const { bySid, byId } = indexBookmarks(snap);
+
+    const targets = [];
+    const missing = [];
+    for (const raw of (body.sids || [])) {
+      const rec = bySid[String(raw)];
+      if (rec) targets.push(rec); else missing.push(String(raw));
+    }
+    for (const raw of (body.bookmarkIds || [])) {
+      const rec = byId[Number(raw)];
+      if (rec && !targets.includes(rec)) targets.push(rec);
+    }
+    if (!targets.length) return j({ error: "대상을 찾지 못했습니다", missing }, 404);
+    if (targets.length > MAX_BATCH) return j({ error: `한 번에 최대 ${MAX_BATCH}곳까지만 가능` }, 400);
+
+    if (!body.confirm) {
+      return j({
+        dryRun: true, count: targets.length, missing,
+        preview: targets.map(t => ({ sid: t.sid, name: t.name, 폴더수: t.folderIds.length })),
+        note: "실행하려면 confirm:true — 네이버 즐겨찾기에서 완전히 삭제됩니다",
+      });
+    }
+
+    // 폴더별로 묶어서 호출 수를 줄인다
+    const byFolder = new Map();
+    for (const t of targets) {
+      for (const f of t.folderIds) {
+        if (!byFolder.has(f)) byFolder.set(f, []);
+        byFolder.get(f).push(t.bookmarkId);
+      }
+    }
+    const removed = new Set(), unmapped = new Set(), errors = [];
+    for (const [folderId, ids] of byFolder) {
+      const r = await fetch(`${PAGES_ORIGIN}/save-pages/api/maps-bookmark/v3/folders/${folderId}/mapping`, {
+        method: "DELETE",
+        headers: naverHeaders(cookie, { "content-type": "application/json" }),
+        body: JSON.stringify({ bookmarkIds: ids }),
+      });
+      const text = await r.text();
+      let out; try { out = JSON.parse(text); } catch { out = {}; }
+      if (!r.ok) { errors.push({ folderId, status: r.status }); continue; }
+      (out.removedBookmarkIds || []).forEach(x => removed.add(x));
+      (out.unmappedBookmarkIds || []).forEach(x => unmapped.add(x));
+    }
+    const stillThere = targets.filter(t => !removed.has(t.bookmarkId));
+    return j({
+      ok: errors.length === 0,
+      삭제됨: targets.filter(t => removed.has(t.bookmarkId)).map(t => ({ sid: t.sid, name: t.name })),
+      남아있음: stillThere.map(t => ({ sid: t.sid, name: t.name })),
+      errors,
+    });
+  }
+
+  // ── 리스트(폴더) 만들기 — 토큰 불필요 ──
+  if (action === "createFolder") {
+    const name = String(body.name || "").trim();
+    if (!name) return j({ error: "name 필요" }, 400);
+    if (name.length > 40) return j({ error: "이름은 40자까지" }, 400);
+    if (!body.confirm) return j({ dryRun: true, willCreate: name, note: "실행하려면 confirm:true" });
+    const r = await fetch(`${PAGES_ORIGIN}/save-widget/api/maps-bookmark/folders/new?t=${Date.now()}`, {
+      method: "POST",
+      headers: naverHeaders(cookie, { "content-type": "application/json" }),
+      body: JSON.stringify({ name, colorCode: String(body.colorCode || "1"), isPublished: false, isExposed: false }),
+    });
+    const text = await r.text();
+    let out; try { out = JSON.parse(text); } catch { out = { raw: text.slice(0, 400) }; }
+    if (!r.ok) return j({ ok: false, status: r.status, response: out }, 502);
+    return j({ ok: true, folderId: out.folderId, name: out.name, colorCode: out.colorCode });
+  }
+
+  // ── 리스트(폴더) 삭제 — 토큰 불필요 ──
+  // ⚠️ 캡처는 빈 폴더 2건뿐이었다. 장소가 든 폴더를 지웠을 때 그 장소들이 살아남는지 검증되지 않아
+  //    기본적으로 비어있지 않은 폴더는 거부한다(allowNonEmpty 로만 강제 가능).
+  if (action === "deleteFolder") {
+    const folderId = Number(body.folderId);
+    if (!folderId) return j({ error: "folderId 필요" }, 400);
+
+    let snap; try { snap = await fetchSync(cookie); } catch (e) { return j({ error: String(e.message || e) }, 502); }
+    const folder = folderList(snap).find(f => f.folderId === folderId);
+    if (!folder) return j({ error: "그런 폴더가 없음", folderId }, 404);
+    if (folder.isDefault) return j({ error: "기본 폴더(내 장소)는 삭제할 수 없음" }, 400);
+
+    const { byId } = indexBookmarks(snap);
+    const members = Object.values(byId).filter(b => b.folderIds.includes(folderId));
+    const onlyHere = members.filter(b => b.folderIds.length <= 1);
+
+    if (members.length && !body.allowNonEmpty) {
+      return j({
+        error: "비어있지 않은 리스트입니다",
+        folderId, name: folder.name, count: members.length, onlyHere: onlyHere.length,
+        note: "장소가 든 리스트를 지웠을 때 그 장소들이 남는지 아직 검증되지 않았습니다. " +
+              "먼저 unmapFolder 로 장소를 비운 뒤 삭제하세요.",
+      }, 409);
+    }
+    if (!body.confirm) {
+      return j({
+        dryRun: true, folderId, name: folder.name, count: members.length,
+        onlyHere: onlyHere.map(b => b.name).slice(0, 25),
+        결과: members.length ? "⚠️ 검증되지 않은 동작" : "빈 리스트 삭제 (장소 영향 없음)",
+        note: "실행하려면 confirm:true",
+      });
+    }
+    const r = await fetch(`${PAGES_ORIGIN}/save-pages/api/maps-bookmark/v3/folders/${folderId}`, {
+      method: "DELETE",
+      headers: naverHeaders(cookie, { "content-type": "application/json" }),
+      body: "{}",
+    });
+    const text = await r.text();
+    let out; try { out = JSON.parse(text); } catch { out = { raw: text.slice(0, 400) }; }
+    if (!r.ok) return j({ ok: false, status: r.status, response: out }, 502);
+    return j({ ok: true, folderId, name: folder.name, response: out });
+  }
+
+  if (action !== "unmapFolder") {
+    return j({
+      error: "아직 구현되지 않은 action",
+      requested: action,
+      supported: ["unmapFolder", "deletePlace", "createFolder", "deleteFolder"],
+      note: "메모·이름변경·폴더에 장소 추가는 save-widget 북마크 PATCH가 필요한데 그 바디의 token 출처를 아직 못 찾았음",
+    }, 501);
+  }
+
+  // ── 폴더에서 빼기 (모든 폴더에서 빠지면 즐겨찾기 자체가 삭제됨) ──
+  const folderId = Number(body.folderId);
+  if (!folderId) return j({ error: "folderId 필요" }, 400);
+
+  let ids = Array.isArray(body.bookmarkIds) ? body.bookmarkIds.map(Number).filter(Boolean) : [];
+  const sids = Array.isArray(body.sids) ? body.sids.map(String) : [];
+
+  let snapshot = null, unresolved = [];
+  if (sids.length || !body.confirm) {
+    try { snapshot = indexBookmarks(await fetchSync(cookie)); }
+    catch (e) { return j({ error: String(e.message || e) }, 502); }
+  }
+  if (sids.length) {
+    for (const s of sids) {
+      const rec = snapshot.bySid[s];
+      if (rec) ids.push(rec.bookmarkId); else unresolved.push(s);
+    }
+  }
+  ids = [...new Set(ids)];
+  if (!ids.length) return j({ error: "대상이 없음 (bookmarkIds 또는 sids 필요)", unresolved }, 400);
+  if (ids.length > MAX_BATCH) return j({ error: `한 번에 최대 ${MAX_BATCH}개까지만 가능`, requested: ids.length }, 400);
+
+  // dry-run: confirm 없으면 "무엇이 어떻게 되는지"만 알려주고 끝
+  if (!body.confirm) {
+    const preview = ids.map(id => {
+      const rec = snapshot.byId[id];
+      if (!rec) return { bookmarkId: id, warn: "즐겨찾기에 없는 ID" };
+      const rest = rec.folderIds.filter(f => f !== folderId);
+      return {
+        bookmarkId: id, sid: rec.sid, name: rec.name,
+        현재폴더: rec.folderIds, 실행후: rest,
+        결과: rest.length ? "폴더에서만 제거" : "⚠️ 즐겨찾기 자체가 삭제됨",
+      };
+    });
+    return j({ dryRun: true, folderId, count: ids.length, unresolved, preview, note: "실제로 실행하려면 같은 요청에 confirm:true 추가" });
+  }
+
+  const r = await fetch(`${PAGES_ORIGIN}/save-pages/api/maps-bookmark/v3/folders/${folderId}/mapping`, {
+    method: "DELETE",
+    headers: naverHeaders(cookie, { "content-type": "application/json" }),
+    body: JSON.stringify({ bookmarkIds: ids }),
+  });
+  const text = await r.text();
+  let out; try { out = JSON.parse(text); } catch { out = { raw: text.slice(0, 500) }; }
+  if (!r.ok) return j({ ok: false, status: r.status, response: out }, 502);
+
+  return j({
+    ok: true, folderId, requested: ids, unresolved,
+    폴더에서제거됨: out.unmappedBookmarkIds || [],
+    완전삭제됨: out.removedBookmarkIds || [],
+    존재하지않음: out.nonExistentBookmarkIds || [],
+    updateDate: out.updateDate,
+  });
 }

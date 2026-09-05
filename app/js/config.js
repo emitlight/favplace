@@ -17,16 +17,17 @@ window.CONFIG = {
 
   // 카테고리 정의 (순서/색)
   CATS: [
-    { k:"음식점", label:"음식점",      color:"#E85C48" },
-    { k:"카페",   label:"카페",        color:"#BE7E4C" },
-    { k:"술집바", label:"술집·바",     color:"#6E63D6" },
-    { k:"문화",   label:"문화",        color:"#2F9E6B" },
-    { k:"레저",   label:"레저",        color:"#1AA0BE" },
-    { k:"명소",   label:"명소",        color:"#E35D97" },
-    { k:"자연",   label:"자연",        color:"#6BAF45" },
-    { k:"숙박",   label:"숙박",        color:"#3E86EF" },
-    { k:"쇼핑",   label:"쇼핑",        color:"#BC55B0" },
-    { k:"주거",   label:"주거·부동산",  color:"#64748B" },
-    { k:"생활",   label:"생활",        color:"#99A7B6" }
+    // 하늘색 키컬러와 어울리는 파스텔 톤 (지도 핀에서도 서로 구분되게 색상환을 넓게 씀)
+    { k:"음식점", label:"음식점",      color:"#F2765F" },
+    { k:"카페",   label:"카페",        color:"#D99A55" },
+    { k:"술집바", label:"술집·바",     color:"#8A7BE8" },
+    { k:"문화",   label:"문화",        color:"#3FB78C" },
+    { k:"레저",   label:"레저",        color:"#2FB6CC" },
+    { k:"명소",   label:"명소",        color:"#EE7AA1" },
+    { k:"자연",   label:"자연",        color:"#83BE5C" },
+    { k:"숙박",   label:"숙박",        color:"#6B8FEA" },
+    { k:"쇼핑",   label:"쇼핑",        color:"#C577C6" },
+    { k:"주거",   label:"주거·부동산",  color:"#7E8EA0" },
+    { k:"생활",   label:"생활",        color:"#A6B4C2" }
   ]
 };

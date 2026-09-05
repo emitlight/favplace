@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>하영의 지도 기획안</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap" />
+<style>
+:root{
+  --ink:#16202B; --ink-2:#4F6070; --ink-3:#8494A4;
+  --blue:#3B7DE0; --blue-d:#2E6BC8; --blue-l:#7FB0F0;
+  --paper:#F4F7FB; --ice:#E8EFF9; --surface:#FFFFFF; --ground:#E4EAF1;
+  --line:rgba(20,50,80,.10); --line-2:rgba(20,50,80,.16);
+  --gold:#D9992F;
+  --shadow:0 6px 20px rgba(30,60,100,.10);
+  --shadow-lg:0 22px 55px rgba(25,55,95,.20);
+  --c1:#F2765F; --c2:#D99A55; --c3:#7E8EA0; --c4:#A6B4C2; --c5:#3FB78C; --c6:#2FB6CC;
+  --c7:#6B8FEA; --c8:#8A7BE8; --c9:#EE7AA1; --c10:#C577C6; --c11:#83BE5C;
+  --sans:"IBM Plex Sans KR","맑은 고딕","Malgun Gothic",system-ui,sans-serif;
+  --serif:"Gowun Batang","바탕",Georgia,serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ink:#E9F0F7; --ink-2:#A6B5C4; --ink-3:#7B8A99;
+    --blue:#5A96EC; --blue-d:#8FBCF4; --blue-l:#9CC4F7;
+    --paper:#16212D; --ice:#1B2836; --surface:#131C26; --ground:#0A1119;
+    --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.16);
+    --gold:#E0AE4A;
+    --shadow:0 6px 20px rgba(0,0,0,.45); --shadow-lg:0 22px 55px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --ink:#E9F0F7; --ink-2:#A6B5C4; --ink-3:#7B8A99;
+  --blue:#5A96EC; --blue-d:#8FBCF4; --blue-l:#9CC4F7;
+  --paper:#16212D; --ice:#1B2836; --surface:#131C26; --ground:#0A1119;
+  --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.16);
+  --gold:#E0AE4A;
+  --shadow:0 6px 20px rgba(0,0,0,.45); --shadow-lg:0 22px 55px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--ground); color:var(--ink);
+  font-family:var(--sans); font-weight:400;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,p,ul,ol{margin:0}
+ul{padding:0;list-style:none}
+
+/* ───────── 무대 ───────── */
+.stage{
+  position:fixed; inset:0; display:grid; place-items:center;
+  padding:56px 20px 20px;
+}
+.slide{
+  width:1280px; height:720px; flex:none;
+  background:var(--surface); color:var(--ink);
+  border-radius:14px; box-shadow:var(--shadow-lg);
+  padding:58px 64px 52px; display:none;
+  flex-direction:column; overflow:hidden;
+  transform:scale(var(--s,1)); transform-origin:center center;
+}
+.slide.on{display:flex}
+.slide.dark{background:#131C26; color:#EEF3F9}
+:root[data-theme="dark"] .slide.dark{background:#0E1720}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .slide.dark{background:#0E1720}
+}
+
+/* ───────── 슬라이드 공통 ───────── */
+.eyebrow{
+  font-size:12px; font-weight:600; letter-spacing:.19em;
+  color:var(--blue); text-transform:uppercase;
+}
+.slide.dark .eyebrow{color:var(--blue-l)}
+.stitle{
+  font-size:37px; font-weight:700; line-height:1.22; letter-spacing:-.022em;
+  text-wrap:balance; margin-top:9px;
+}
+.shead{margin-bottom:34px}
+.lede{font-size:15.5px; color:var(--ink-2); line-height:1.6; max-width:74ch; margin-top:11px}
+.foot{margin-top:auto; font-size:13.5px; color:var(--ink-2); line-height:1.55}
+.foot em{font-style:normal; color:var(--blue-d); font-weight:600}
+.body{flex:1; display:flex; flex-direction:column; justify-content:center; gap:22px; min-height:0}
+
+/* 점 모티프 — 분류를 실제로 가리킬 때만 */
+.dot{width:11px;height:11px;border-radius:50%;flex:none;display:inline-block}
+
+/* 카드 격자 */
+.grid{display:grid; gap:20px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g5{grid-template-columns:repeat(5,1fr)}
+.card{
+  background:var(--paper); border-radius:13px; padding:24px 24px 22px;
+  display:flex; flex-direction:column; gap:9px; min-width:0;
+}
+.card.ice{background:var(--ice)}
+.card h3{font-size:17px; font-weight:600; letter-spacing:-.012em}
+.card p{font-size:13.5px; color:var(--ink-2); line-height:1.58}
+.card .big{
+  font-family:var(--serif); font-size:52px; font-weight:700;
+  line-height:1; letter-spacing:-.02em;
+}
+.card .lbl{font-size:13.5px; font-weight:600}
+
+/* 행 목록 */
+.rows{display:flex; flex-direction:column; gap:2px}
+.row{
+  display:grid; grid-template-columns:16px 190px 1fr; gap:15px; align-items:baseline;
+  padding:13px 18px; border-radius:9px; font-size:14px;
+}
+.row:nth-child(odd){background:var(--paper)}
+.row b{font-weight:600}
+.row span{color:var(--ink-2); line-height:1.5}
+.row .dot{position:relative; top:3px}
+
+/* 순서 단계 — 실제 순서가 있는 경우에만 */
+.steps{display:grid; grid-template-columns:repeat(5,1fr); gap:14px; align-items:stretch}
+.step{background:var(--paper); border-radius:13px; padding:22px 20px; display:flex; flex-direction:column; gap:10px}
+.num{
+  width:34px;height:34px;border-radius:50%; display:grid; place-items:center;
+  font-family:var(--serif); font-size:14px; font-weight:700; color:#fff;
+}
+.step h3{font-size:16.5px; font-weight:600}
+.step p{font-size:12.5px; color:var(--ink-2); line-height:1.55}
+
+/* 막대 차트 */
+.bars{display:flex; flex-direction:column; justify-content:center; gap:11px}
+.bar{display:grid; grid-template-columns:96px 1fr 46px; gap:12px; align-items:center; font-size:13.5px}
+.bar .nm{color:var(--ink); font-weight:500; text-align:right}
+.bar .tr{height:25px; background:var(--paper); border-radius:5px; overflow:hidden}
+.bar .fl{height:100%; border-radius:5px}
+.bar .vl{font-variant-numeric:tabular-nums; color:var(--ink-2); font-weight:600}
+
+/* 목록형 불릿 */
+.ul li{
+  font-size:13.5px; color:var(--ink-2); line-height:1.55;
+  padding-left:15px; position:relative; margin-bottom:8px;
+}
+.ul li::before{
+  content:""; position:absolute; left:0; top:8px;
+  width:5px;height:5px;border-radius:50%; background:var(--blue);
+}
+.slide.dark .ul li{color:#B8C8D8}
+.slide.dark .ul li::before{background:var(--blue-l)}
+
+/* 주의 블록 */
+.note{
+  background:color-mix(in srgb, var(--gold) 13%, var(--surface));
+  border-radius:12px; padding:20px 24px;
+  display:flex; flex-direction:column; gap:7px;
+}
+.note b{font-size:15px; color:var(--ink)}
+.note p{font-size:13px; color:var(--ink-2); line-height:1.6}
+
+/* 별 */
+.stars{display:flex; align-items:center; gap:5px}
+.stars i{font-style:normal; font-size:33px; color:var(--line-2); line-height:1}
+.stars i.on{color:var(--gold)}
+.stars em{font-style:normal; font-size:15px; font-weight:600; color:var(--ink-2); margin-left:9px}
+
+/* 인용 칩 */
+.chips{display:flex; flex-direction:column; gap:9px}
+.chip{
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:22px; padding:11px 18px; font-size:13.5px; color:var(--ink-2);
+}
+
+/* 표지 */
+.cover{justify-content:center; position:relative}
+.cover .kick{font-size:13px; font-weight:600; letter-spacing:.25em; color:var(--blue-l)}
+.cover h1{
+  font-family:var(--serif); font-size:88px; font-weight:700;
+  line-height:1.04; letter-spacing:-.035em; margin-top:20px; color:#fff;
+}
+.cover .sub{font-size:22px; color:#BFD3EA; margin-top:20px; line-height:1.5}
+.cover .meta{margin-top:44px; display:flex; gap:26px; align-items:baseline; flex-wrap:wrap}
+.cover .meta b{font-size:15px; color:#fff; font-weight:600}
+.cover .meta span{font-size:13.5px; color:#8FA3B8}
+.pins{position:absolute; right:64px; top:0; bottom:0; width:250px; pointer-events:none}
+.pins i{position:absolute; width:22px;height:22px;border-radius:50%}
+
+/* 마감 슬라이드 패널 */
+.panel{background:rgba(255,255,255,.05); border-radius:13px; padding:26px 28px; display:flex; flex-direction:column; gap:14px}
+.panel h3{font-size:18px; font-weight:600; color:#fff; display:flex; align-items:center; gap:10px}
+
+/* ───────── 조작부 ───────── */
+.bar-top{
+  position:fixed; top:0; left:0; right:0; height:46px; z-index:20;
+  display:flex; align-items:center; gap:14px; padding:0 16px;
+  background:var(--ground); border-bottom:1px solid var(--line);
+}
+.bar-top .name{font-size:13.5px; font-weight:600; letter-spacing:-.01em}
+.bar-top .name span{color:var(--ink-3); font-weight:400; margin-left:8px}
+.sp{flex:1}
+.btn{
+  font:inherit; font-size:13px; font-weight:500; color:var(--ink-2);
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:8px; padding:6px 12px; cursor:pointer;
+}
+.btn:hover{border-color:var(--line-2); color:var(--ink)}
+.btn:focus-visible,.slide a:focus-visible{outline:2px solid var(--blue); outline-offset:2px}
+.count{font-size:13px; color:var(--ink-2); font-variant-numeric:tabular-nums; min-width:52px; text-align:center}
+.nav{
+  position:fixed; bottom:18px; left:50%; transform:translateX(-50%); z-index:20;
+  display:flex; align-items:center; gap:6px;
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:999px; padding:6px 8px; box-shadow:var(--shadow);
+}
+.nav button{
+  width:34px;height:34px;border-radius:50%; border:none; background:none;
+  color:var(--ink-2); font-size:17px; cursor:pointer; display:grid; place-items:center;
+}
+.nav button:hover{background:var(--paper); color:var(--ink)}
+.nav button:disabled{opacity:.32; cursor:default}
+
+/* 전체 보기 */
+.overview{
+  position:fixed; inset:46px 0 0; z-index:15; background:var(--ground);
+  overflow-y:auto; padding:26px; display:none;
+  grid-template-columns:repeat(auto-fill,minmax(232px,1fr)); gap:18px; align-content:start;
+}
+.overview.on{display:grid}
+.thumb{
+  background:var(--surface); border:1px solid var(--line); border-radius:10px;
+  padding:15px 16px; cursor:pointer; text-align:left; font:inherit;
+  display:flex; flex-direction:column; gap:6px; min-height:96px;
+}
+.thumb:hover{border-color:var(--blue); box-shadow:var(--shadow)}
+.thumb .n{font-family:var(--serif); font-size:13px; font-weight:700; color:var(--blue)}
+.thumb .t{font-size:14px; font-weight:600; line-height:1.35; color:var(--ink)}
+.thumb .k{font-size:11px; letter-spacing:.14em; color:var(--ink-3); text-transform:uppercase}
+
+/* ───────── 폰: 슬라이드 → 문서 ───────── */
+@media (max-width:900px){
+  .stage{position:static; display:block; padding:60px 0 40px}
+  .slide{
+    display:flex !important; width:auto; height:auto; min-height:0;
+    transform:none !important; border-radius:0; box-shadow:none;
+    padding:38px 22px 40px; border-bottom:1px solid var(--line);
+  }
+  .stitle{font-size:26px}
+  .lede{font-size:15px}
+  .body{gap:18px; justify-content:flex-start}
+  .grid,.steps{grid-template-columns:1fr !important; gap:12px}
+  .row{grid-template-columns:14px 1fr; row-gap:4px; padding:12px 14px}
+  .row span{grid-column:2}
+  .bar{grid-template-columns:78px 1fr 40px; font-size:12.5px}
+  .cover h1{font-size:52px}
+  .cover .sub{font-size:17px}
+  .pins{display:none}
+  .nav,.count,.overview{display:none !important}
+  .card .big{font-size:42px}
+}
+
+/* ───────── 인쇄 ───────── */
+@media print{
+  body{background:#fff}
+  .bar-top,.nav,.overview{display:none !important}
+  .stage{position:static; display:block; padding:0}
+  .slide{
+    display:flex !important; transform:none !important;
+    box-shadow:none; border-radius:0; break-after:page; page-break-after:always;
+  }
+}
+@media (prefers-reduced-motion:reduce){*{animation:none !important; transition:none !important}}
+</style>
+</head>
+<body>
+
+<header class="bar-top">
+  <span class="name">하영의 지도<span>기획안 · 사용 매뉴얼</span></span>
+  <span class="sp"></span>
+  <span class="count" id="count">1 / 16</span>
+  <button class="btn" id="btn-ov">전체 보기</button>
+  <button class="btn" id="btn-print">PDF로 저장</button>
+</header>
+
+<div class="overview" id="overview"></div>
+
+<main class="stage" id="stage">
+
+<!-- 1 · 표지 -->
+<section class="slide dark cover on" data-kick="COVER" data-title="하영의 지도">
+  <div class="pins">
+    <i style="background:var(--c1);left:18px;top:88px"></i>
+    <i style="background:var(--c2);left:126px;top:150px"></i>
+    <i style="background:var(--c5);left:56px;top:222px"></i>
+    <i style="background:var(--c7);left:178px;top:268px"></i>
+    <i style="background:var(--c9);left:12px;top:330px"></i>
+    <i style="background:var(--c6);left:132px;top:388px"></i>
+    <i style="background:var(--c8);left:200px;top:452px"></i>
+    <i style="background:var(--c11);left:64px;top:498px"></i>
+    <i style="background:var(--c10);left:150px;top:566px"></i>
+  </div>
+  <span class="kick">PROJECT · 2026</span>
+  <h1>하영의 지도</h1>
+  <p class="sub">네이버 즐겨찾기 750곳을,<br />내가 실제로 쓸 수 있게</p>
+  <div class="meta">
+    <b>기획안 · 사용 매뉴얼</b>
+    <span>favplace-map.pages.dev</span>
+    <span>2026.09.05 기준</span>
+  </div>
+</section>
+
+<!-- 2 · 문제 -->
+<section class="slide" data-kick="PROBLEM" data-title="저장은 쌓이는데, 꺼내 쓸 수가 없었다">
+  <div class="shead">
+    <span class="eyebrow">Problem</span>
+    <h2 class="stitle">저장은 쌓이는데, 다시 꺼내 쓸 수가 없었다</h2>
+  </div>
+  <div class="body">
+    <div class="grid g3">
+      <div class="card">
+        <span class="dot" style="background:var(--c1)"></span>
+        <span class="big">750곳</span>
+        <span class="lbl">네이버에 쌓인 즐겨찾기</span>
+        <p>목록이 한 줄로만 나열돼, 어디에 뭐가 있는지 알 수 없음</p>
+      </div>
+      <div class="card">
+        <span class="dot" style="background:var(--c2)"></span>
+        <span class="big">7개</span>
+        <span class="lbl">네이버의 리스트(폴더)</span>
+        <p>폴더로는 테마 분류가 안 됨. ‘카페’와 ‘한식’을 갈라볼 수 없음</p>
+      </div>
+      <div class="card">
+        <span class="dot" style="background:var(--c8)"></span>
+        <span class="big">0개</span>
+        <span class="lbl">내가 남긴 평가</span>
+        <p>다녀왔는지, 좋았는지를 기록할 자리가 아예 없음</p>
+      </div>
+    </div>
+  </div>
+  <p class="foot"><em>즐겨찾기는 ‘저장하는 곳’이었지, ‘고르는 곳’이 아니었다.</em></p>
+</section>
+
+<!-- 3 · 정의 -->
+<section class="slide" data-kick="CONCEPT" data-title="이 서비스가 무엇인가">
+  <div class="shead">
+    <span class="eyebrow">Concept</span>
+    <h2 class="stitle">이 서비스가 무엇인가</h2>
+  </div>
+  <div class="body">
+    <div class="card ice" style="padding:30px 32px">
+      <p style="font-size:25px; line-height:1.5; color:var(--ink); font-weight:400">
+        네이버 즐겨찾기가 <b style="color:var(--blue-d)">원본</b>이고,
+        이 앱은 그걸 <b style="color:var(--blue-d)">보기 좋게 정리해 보여주는 도구</b>다.
+      </p>
+    </div>
+    <div class="grid g2">
+      <div class="card">
+        <h3><span class="dot" style="background:var(--ink-3)"></span> 네이버가 하는 일</h3>
+        <ul class="ul">
+          <li>장소 저장 — 원본</li>
+          <li>폴더(리스트) 보관</li>
+          <li>사진 · 평점 · 리뷰 제공</li>
+        </ul>
+      </div>
+      <div class="card ice">
+        <h3><span class="dot" style="background:var(--blue)"></span> 이 앱이 하는 일</h3>
+        <ul class="ul">
+          <li>테마 11종으로 자동 분류</li>
+          <li>지도 · 지역 · 점수로 탐색</li>
+          <li>방문 · 별점 · 메모 기록</li>
+          <li>AI 코스 생성</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <p class="foot">원본을 대체하지 않는다. 네이버는 저장소, 이 앱은 뷰어이자 정리 도구.</p>
+</section>
+
+<!-- 4 · 파이프라인 -->
+<section class="slide" data-kick="PIPELINE" data-title="데이터가 흘러오는 길">
+  <div class="shead">
+    <span class="eyebrow">Pipeline</span>
+    <h2 class="stitle">데이터가 흘러오는 길</h2>
+  </div>
+  <div class="body">
+    <div class="steps">
+      <div class="step"><span class="num" style="background:var(--c7)">01</span><h3>수집</h3><p>네이버 즐겨찾기 API에서 전체 목록을 받아온다</p></div>
+      <div class="step"><span class="num" style="background:var(--c2)">02</span><h3>보강</h3><p>장소별 사진 · 평점 · 메뉴 · 한줄평을 추가 수집</p></div>
+      <div class="step"><span class="num" style="background:var(--c5)">03</span><h3>분류</h3><p>카테고리와 장소명을 함께 분석해 테마 11종 / 세부로 나눔</p></div>
+      <div class="step"><span class="num" style="background:var(--c6)">04</span><h3>지역화</h3><p>주소에서 시도 · 시군구 · 동을 추출해 3단 드릴다운 구성</p></div>
+      <div class="step"><span class="num" style="background:var(--blue)">05</span><h3>배포</h3><p>정적 파일로 빌드해 Cloudflare에 올림</p></div>
+    </div>
+  </div>
+  <p class="foot">
+    01~04는 매일 새벽 자동 실행 · 앱에서 <em>⟳</em> 를 누르면 01만 즉시 실행돼 지도에 바로 반영됩니다.<br />
+    보강(02)은 장소당 1.4초가 걸려 브라우저에서는 돌릴 수 없습니다 — 최신화가 두 겹인 이유.
+  </p>
+</section>
+
+<!-- 5 · 현황 -->
+<section class="slide" data-kick="STATUS" data-title="숫자로 보는 현재">
+  <div class="shead">
+    <span class="eyebrow">Status</span>
+    <h2 class="stitle">숫자로 보는 현재</h2>
+  </div>
+  <div class="body">
+    <div class="grid g4">
+      <div class="card"><span class="dot" style="background:var(--c1)"></span><span class="big">750</span><span class="lbl">저장 장소</span></div>
+      <div class="card"><span class="dot" style="background:var(--c2)"></span><span class="big">588</span><span class="lbl">사진 확보</span></div>
+      <div class="card"><span class="dot" style="background:var(--c5)"></span><span class="big">11</span><span class="lbl">테마 분류</span></div>
+      <div class="card"><span class="dot" style="background:var(--c7)"></span><span class="big">708</span><span class="lbl">동 단위 위치</span></div>
+    </div>
+    <div class="rows">
+      <div class="row"><span class="dot" style="background:var(--ink-3)"></span><b>폐업 15곳</b><span>네이버가 삭제했거나 문 닫은 곳 — 목록에 표시만 하고 걸러낼 수 있음</span></div>
+      <div class="row"><span class="dot" style="background:var(--ink-3)"></span><b>사진 없는 162곳</b><span>네이버에 대표 사진이 없는 장소. 이름 · 위치 · 분류는 모두 정상</span></div>
+      <div class="row"><span class="dot" style="background:var(--ink-3)"></span><b>동 정보 42곳 없음</b><span>이 중 10곳은 ‘주소 즐겨찾기’라 장소 페이지가 없어 원리상 채울 수 없음</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · 분류 -->
+<section class="slide" data-kick="TAXONOMY" data-title="테마 11종 — 색이 곧 분류">
+  <div class="shead">
+    <span class="eyebrow">Taxonomy</span>
+    <h2 class="stitle">테마 11종 — 색이 곧 분류</h2>
+  </div>
+  <div class="body" style="flex-direction:row; gap:34px">
+    <div class="bars" style="flex:1.35">
+      <div class="bar"><span class="nm">음식점</span><span class="tr"><span class="fl" style="width:100%;background:var(--c1)"></span></span><span class="vl">272</span></div>
+      <div class="bar"><span class="nm">카페</span><span class="tr"><span class="fl" style="width:72.8%;background:var(--c2)"></span></span><span class="vl">198</span></div>
+      <div class="bar"><span class="nm">주거·부동산</span><span class="tr"><span class="fl" style="width:32.0%;background:var(--c3)"></span></span><span class="vl">87</span></div>
+      <div class="bar"><span class="nm">생활</span><span class="tr"><span class="fl" style="width:26.1%;background:var(--c4)"></span></span><span class="vl">71</span></div>
+      <div class="bar"><span class="nm">문화</span><span class="tr"><span class="fl" style="width:11.8%;background:var(--c5)"></span></span><span class="vl">32</span></div>
+      <div class="bar"><span class="nm">레저</span><span class="tr"><span class="fl" style="width:8.5%;background:var(--c6)"></span></span><span class="vl">23</span></div>
+      <div class="bar"><span class="nm">숙박</span><span class="tr"><span class="fl" style="width:7.4%;background:var(--c7)"></span></span><span class="vl">20</span></div>
+      <div class="bar"><span class="nm">술집·바</span><span class="tr"><span class="fl" style="width:5.9%;background:var(--c8)"></span></span><span class="vl">16</span></div>
+      <div class="bar"><span class="nm">명소</span><span class="tr"><span class="fl" style="width:4.8%;background:var(--c9)"></span></span><span class="vl">13</span></div>
+      <div class="bar"><span class="nm">쇼핑</span><span class="tr"><span class="fl" style="width:3.3%;background:var(--c10)"></span></span><span class="vl">9</span></div>
+      <div class="bar"><span class="nm">자연</span><span class="tr"><span class="fl" style="width:3.3%;background:var(--c11)"></span></span><span class="vl">9</span></div>
+    </div>
+    <div class="card" style="flex:1; justify-content:flex-start">
+      <h3>2단 구조</h3>
+      <p>대분류를 고른 뒤 <b>›</b> 를 누르면 세부 종류로 좁혀집니다.</p>
+      <div style="margin-top:12px; display:flex; flex-direction:column; gap:16px">
+        <div>
+          <h3 style="font-size:15px"><span class="dot" style="background:var(--c1)"></span> 음식점 272</h3>
+          <p style="margin-top:5px">한식 100 · 고기·구이 54 · 양식 43<br />일식·회 33 · 중식 20 · 분식 15</p>
+        </div>
+        <div>
+          <h3 style="font-size:15px"><span class="dot" style="background:var(--c2)"></span> 카페 198</h3>
+          <p style="margin-top:5px">디저트 81 · 커피 47 · 베이커리 27<br />브런치 11 · 케이크 8 · 베이글 6</p>
+        </div>
+      </div>
+      <p style="margin-top:auto; color:var(--ink-3)">네이버 카테고리 + 장소명을 함께 분석해 자동 분류</p>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · 지역 -->
+<section class="slide" data-kick="COVERAGE" data-title="지역 분포 — 도 › 시군구 › 동">
+  <div class="shead">
+    <span class="eyebrow">Coverage</span>
+    <h2 class="stitle">지역 분포 — 도 › 시군구 › 동</h2>
+  </div>
+  <div class="body" style="flex-direction:row; gap:34px">
+    <div class="bars" style="flex:1.3">
+      <div class="bar"><span class="nm">경기</span><span class="tr"><span class="fl" style="width:100%;background:var(--blue)"></span></span><span class="vl">386</span></div>
+      <div class="bar"><span class="nm">서울</span><span class="tr"><span class="fl" style="width:49.2%;background:var(--blue)"></span></span><span class="vl">190</span></div>
+      <div class="bar"><span class="nm">대전</span><span class="tr"><span class="fl" style="width:17.4%;background:var(--blue)"></span></span><span class="vl">67</span></div>
+      <div class="bar"><span class="nm">제주</span><span class="tr"><span class="fl" style="width:7.5%;background:var(--blue)"></span></span><span class="vl">29</span></div>
+      <div class="bar"><span class="nm">강원</span><span class="tr"><span class="fl" style="width:7.3%;background:var(--blue)"></span></span><span class="vl">28</span></div>
+      <div class="bar"><span class="nm">부산</span><span class="tr"><span class="fl" style="width:3.4%;background:var(--blue)"></span></span><span class="vl">13</span></div>
+      <div class="bar"><span class="nm">경남</span><span class="tr"><span class="fl" style="width:1.3%;background:var(--blue)"></span></span><span class="vl">5</span></div>
+      <div class="bar"><span class="nm">광주</span><span class="tr"><span class="fl" style="width:1.3%;background:var(--blue)"></span></span><span class="vl">5</span></div>
+    </div>
+    <div class="card ice" style="flex:1; justify-content:flex-start; gap:18px">
+      <h3>3단 드릴다운</h3>
+      <div style="display:flex; flex-direction:column; gap:15px">
+        <div style="display:flex; gap:13px; align-items:flex-start">
+          <span class="num" style="background:var(--blue); width:27px; height:27px; font-size:12px">1</span>
+          <div><b style="font-size:14.5px">도 / 시</b><p style="font-size:12.5px; color:var(--ink-2); margin-top:3px">경기 386 · 서울 190 · 대전 67</p></div>
+        </div>
+        <div style="display:flex; gap:13px; align-items:flex-start">
+          <span class="num" style="background:var(--blue); width:27px; height:27px; font-size:12px">2</span>
+          <div><b style="font-size:14.5px">시군구</b><p style="font-size:12.5px; color:var(--ink-2); margin-top:3px">용인시 처인구 · 강남구 · 유성구</p></div>
+        </div>
+        <div style="display:flex; gap:13px; align-items:flex-start">
+          <span class="num" style="background:var(--blue); width:27px; height:27px; font-size:12px">3</span>
+          <div><b style="font-size:14.5px">동 / 읍면리</b><p style="font-size:12.5px; color:var(--ink-2); margin-top:3px">정자동 · 양지면 · 은행동</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="foot">지도에서 가까운 핀은 <em>“동네 이름 + 개수”</em> 버블로 묶여, 숫자만 뜨는 클러스터보다 어디인지 바로 읽힙니다.</p>
+</section>
+
+<!-- 8 · 기능 -->
+<section class="slide" data-kick="FEATURES" data-title="핵심 기능 여섯">
+  <div class="shead">
+    <span class="eyebrow">Features</span>
+    <h2 class="stitle">핵심 기능 여섯</h2>
+  </div>
+  <div class="body">
+    <div class="grid g3" style="flex:1">
+      <div class="card"><h3><span class="dot" style="background:var(--c7)"></span> 지도 탐색</h3><p>테마 색 핀과 동네 버블. 지역 · 테마 · 기록을 조합해 걸러 봅니다</p></div>
+      <div class="card"><h3><span class="dot" style="background:var(--gold)"></span> 내 별점</h3><p>장소마다 별 1~5개. 같은 별을 다시 누르면 해제됩니다</p></div>
+      <div class="card"><h3><span class="dot" style="background:var(--c1)"></span> 점수 정렬 · 필터</h3><p>내 별점순 / 네이버 평점순. ★4 이상만 골라 보기</p></div>
+      <div class="card"><h3><span class="dot" style="background:var(--c5)"></span> 방문 · 메모</h3><p>가봤어요 체크와 자유 메모. 안 가본 곳만 걸러 보기</p></div>
+      <div class="card"><h3><span class="dot" style="background:var(--c6)"></span> AI 코스</h3><p>말로 요청하면 저장 장소로 동선과 시간까지 짜줍니다</p></div>
+      <div class="card"><h3><span class="dot" style="background:var(--c3)"></span> 네이버 반영</h3><p>앱에서 지우면 네이버 즐겨찾기에서도 삭제됩니다</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · 매뉴얼 홈 -->
+<section class="slide" data-kick="사용 매뉴얼 01" data-title="지도 홈 — 어디에 뭐가 있나">
+  <div class="shead">
+    <span class="eyebrow">사용 매뉴얼 01</span>
+    <h2 class="stitle">지도 홈 — 어디에 뭐가 있나</h2>
+  </div>
+  <div class="body">
+    <div class="rows">
+      <div class="row"><span class="dot" style="background:var(--c1)"></span><b>상단 검색 필드</b><span>이름 · 지명 · 메뉴 · 설명으로 검색. 지명을 넣으면 그 지역 장소만 남습니다</span></div>
+      <div class="row"><span class="dot" style="background:var(--c2)"></span><b>필터 칩 3개</b><span>지역 · 테마 · 내 기록. 누르면 각각 드릴다운 시트가 열립니다</span></div>
+      <div class="row"><span class="dot" style="background:var(--c5)"></span><b>지도 우측 ⟳</b><span>네이버에서 지금 목록을 받아 지도에 즉시 반영</span></div>
+      <div class="row"><span class="dot" style="background:var(--c6)"></span><b>지도 우측 ◎</b><span>내 위치 표시. 켜면 ‘가까운 순’ 정렬이 추가됩니다</span></div>
+      <div class="row"><span class="dot" style="background:var(--c7)"></span><b>우하단 ✨</b><span>AI 추천 코스 열기</span></div>
+      <div class="row"><span class="dot" style="background:var(--c8)"></span><b>하단 시트</b><span>손잡이를 탭하면 단계별로 확장. ∨ 를 누르면 완전히 숨겨집니다</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 · 매뉴얼 필터 -->
+<section class="slide" data-kick="사용 매뉴얼 02" data-title="필터 세 개로 750곳을 좁힌다">
+  <div class="shead">
+    <span class="eyebrow">사용 매뉴얼 02</span>
+    <h2 class="stitle">필터 세 개로 750곳을 좁힌다</h2>
+  </div>
+  <div class="body">
+    <div class="grid g3" style="flex:1">
+      <div class="card">
+        <h3><span class="dot" style="background:var(--c7)"></span> 지역</h3>
+        <ul class="ul"><li>도 / 시 선택</li><li>시군구로 좁히기</li><li>동 / 읍면리까지</li></ul>
+        <p style="margin-top:auto; color:var(--blue-d); font-weight:600">경기 386 › 용인시 처인구 › 양지면</p>
+      </div>
+      <div class="card">
+        <h3><span class="dot" style="background:var(--c1)"></span> 테마</h3>
+        <ul class="ul"><li>대분류 11종</li><li>› 로 세부 종류</li><li>칩에 선택 표시</li></ul>
+        <p style="margin-top:auto; color:var(--blue-d); font-weight:600">음식점 272 › 한식 100</p>
+      </div>
+      <div class="card">
+        <h3><span class="dot" style="background:var(--gold)"></span> 내 기록</h3>
+        <ul class="ul"><li>가본 곳 / 안 간 곳</li><li>★5 · ★4 이상 · ★3 이상</li><li>나만의 리스트</li></ul>
+        <p style="margin-top:auto; color:var(--blue-d); font-weight:600">★4 이상 → 내가 좋아한 곳만</p>
+      </div>
+    </div>
+  </div>
+  <p class="foot">세 필터는 자유롭게 겹칩니다. 예) <em>지역 = 강남구 × 테마 = 카페 × ★4 이상</em></p>
+</section>
+
+<!-- 11 · 매뉴얼 기록 -->
+<section class="slide" data-kick="사용 매뉴얼 03" data-title="장소마다 내 평가를 남긴다">
+  <div class="shead">
+    <span class="eyebrow">사용 매뉴얼 03</span>
+    <h2 class="stitle">장소마다 내 평가를 남긴다</h2>
+  </div>
+  <div class="body">
+    <div class="grid g2">
+      <div class="card">
+        <h3>내 별점</h3>
+        <div class="stars" style="margin:10px 0 4px">
+          <i class="on">★</i><i class="on">★</i><i class="on">★</i><i class="on">★</i><i>★</i><em>4점</em>
+        </div>
+        <p>장소 상세에서 별을 누르면 바로 저장됩니다. 같은 별을 다시 누르면 해제돼요.</p>
+      </div>
+      <div class="rows">
+        <div class="row"><span class="dot" style="background:var(--c5)"></span><b>가봤어요</b><span>체크하면 목록 · 지도에 ✓ 가 붙고 살짝 흐려집니다</span></div>
+        <div class="row"><span class="dot" style="background:var(--c6)"></span><b>내 메모</b><span>자유롭게 적으면 자동 저장. 네이버 메모와는 별개입니다</span></div>
+        <div class="row"><span class="dot" style="background:var(--c3)"></span><b>리스트에 추가</b><span>나만의 리스트를 만들어 담기</span></div>
+      </div>
+    </div>
+    <div class="note">
+      <b>⚠ 이 기록은 이 기기(브라우저)에만 저장됩니다</b>
+      <p>별점 · 메모 · 방문 기록 · 나만의 리스트는 서버가 아니라 브라우저에 있습니다. 폰을 바꾸거나 브라우저 데이터를 지우면 사라져요.<br />
+      <b style="font-weight:600">내 기록 → 기록 내보내기</b> 로 가끔 백업해 두세요. 다른 기기에서는 <b style="font-weight:600">가져오기</b> 로 합칠 수 있습니다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 12 · 매뉴얼 정렬 -->
+<section class="slide" data-kick="사용 매뉴얼 04" data-title="점수 높은 순으로 골라 보기">
+  <div class="shead">
+    <span class="eyebrow">사용 매뉴얼 04</span>
+    <h2 class="stitle">점수 높은 순으로 골라 보기</h2>
+  </div>
+  <div class="body">
+    <div class="grid g4">
+      <div class="card"><h3><span class="dot" style="background:var(--ink-3)"></span> 추천순</h3><p>사진 · 리뷰 수 기반 기본값</p></div>
+      <div class="card"><h3><span class="dot" style="background:var(--gold)"></span> 내 별점순</h3><p>내가 매긴 별점이 높은 순</p></div>
+      <div class="card"><h3><span class="dot" style="background:var(--c1)"></span> 네이버 평점순</h3><p>방문자 평점이 높은 순</p></div>
+      <div class="card"><h3><span class="dot" style="background:var(--c7)"></span> 가까운 순</h3><p>내 위치를 켰을 때만 나타남</p></div>
+    </div>
+    <div class="card ice">
+      <h3>이렇게 쓰면 좋아요</h3>
+      <ul class="ul" style="margin-top:6px">
+        <li>강남에서 저녁 → 지역 <b>강남구</b> × 테마 <b>음식점</b> × <b>내 별점순</b></li>
+        <li>재방문할 카페 → 테마 <b>카페</b> × <b>★4 이상</b> × <b>가본 곳</b></li>
+        <li>새로 가볼 곳 → <b>안 간 곳</b> × <b>네이버 평점순</b></li>
+      </ul>
+    </div>
+  </div>
+  <p class="foot">정렬은 목록 위에 항상 떠 있고, 필터와 함께 걸립니다.</p>
+</section>
+
+<!-- 13 · 매뉴얼 AI -->
+<section class="slide" data-kick="사용 매뉴얼 05" data-title="AI 코스 — 말로 시키면 동선을 짠다">
+  <div class="shead">
+    <span class="eyebrow">사용 매뉴얼 05</span>
+    <h2 class="stitle">AI 코스 — 말로 시키면 동선을 짠다</h2>
+  </div>
+  <div class="body">
+    <div class="grid g2" style="flex:1">
+      <div class="card">
+        <h3>이렇게 물어보세요</h3>
+        <div class="chips" style="margin-top:8px">
+          <span class="chip">“오늘 청담인데 저녁 먹고 디저트까지”</span>
+          <span class="chip">“비 오는 날 조용한 카페”</span>
+          <span class="chip">“부모님 모시고 갈 한식집”</span>
+          <span class="chip">“강릉 1박 코스”</span>
+          <span class="chip">“아직 안 가본 디저트”</span>
+        </div>
+      </div>
+      <div class="card ice">
+        <h3>결과로 나오는 것</h3>
+        <div style="display:flex; flex-direction:column; gap:13px; margin-top:8px">
+          <div style="display:flex; gap:13px"><span class="num" style="background:var(--blue); width:26px;height:26px;font-size:12px">1</span><div><b style="font-size:14px">코스 제목과 요약</b><p style="font-size:12.5px;color:var(--ink-2);margin-top:2px">3곳 · 2.4km · 약 3시간</p></div></div>
+          <div style="display:flex; gap:13px"><span class="num" style="background:var(--blue); width:26px;height:26px;font-size:12px">2</span><div><b style="font-size:14px">지도 위 번호 경로</b><p style="font-size:12.5px;color:var(--ink-2);margin-top:2px">1 → 2 → 3 순서와 점선 동선</p></div></div>
+          <div style="display:flex; gap:13px"><span class="num" style="background:var(--blue); width:26px;height:26px;font-size:12px">3</span><div><b style="font-size:14px">시간순 타임라인</b><p style="font-size:12.5px;color:var(--ink-2);margin-top:2px">18:30 한식 · 20:20 디저트</p></div></div>
+          <div style="display:flex; gap:13px"><span class="num" style="background:var(--blue); width:26px;height:26px;font-size:12px">4</span><div><b style="font-size:14px">장소별 추천 이유</b><p style="font-size:12.5px;color:var(--ink-2);margin-top:2px">왜 이 순서인지까지 설명</p></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="foot">코스는 <em>내가 저장한 750곳 안에서만</em> 짜집니다. 거리 · 소요시간 · 이동수단은 좌표로 계산돼요.</p>
+</section>
+
+<!-- 14 · 최신화 -->
+<section class="slide" data-kick="SYNC" data-title="최신화는 두 겹으로 돈다">
+  <div class="shead">
+    <span class="eyebrow">Sync</span>
+    <h2 class="stitle">최신화는 두 겹으로 돈다</h2>
+  </div>
+  <div class="body">
+    <div class="grid g2">
+      <div class="card">
+        <h3><span class="num" style="background:var(--blue); width:30px;height:30px;font-size:12px">1</span> 앱에서 즉시</h3>
+        <p style="color:var(--blue-d); font-weight:600">⟳ 버튼 · 24시간마다 자동</p>
+        <ul class="ul" style="margin-top:6px">
+          <li>새로 저장한 장소가 즉시 지도에 추가</li>
+          <li>네이버에서 지운 장소는 즉시 사라짐</li>
+          <li>사진 · 평점은 아직 안 붙음 — ‘새로 추가’ 표시</li>
+        </ul>
+      </div>
+      <div class="card ice">
+        <h3><span class="num" style="background:var(--c5); width:30px;height:30px;font-size:12px">2</span> 매일 새벽 2시</h3>
+        <p style="color:var(--blue-d); font-weight:600">GitHub Actions 자동 실행</p>
+        <ul class="ul" style="margin-top:6px">
+          <li>사진 · 평점 · 메뉴까지 완전히 채움</li>
+          <li>겹1에서 비어 있던 장소가 채워짐</li>
+          <li>빌드 후 자동 배포까지</li>
+        </ul>
+      </div>
+    </div>
+    <div class="note">
+      <b>겹 2를 켜려면 GitHub Secrets 두 개가 필요합니다</b>
+      <p><b style="font-weight:600">NAVER_COOKIE</b> — 네이버 로그인 쿠키 · <b style="font-weight:600">CLOUDFLARE_API_TOKEN</b> — 없으면 데이터만 커밋되고 배포는 건너뜁니다</p>
+    </div>
+  </div>
+</section>
+
+<!-- 15 · 아키텍처 -->
+<section class="slide" data-kick="ARCHITECTURE" data-title="무엇으로 만들었나">
+  <div class="shead">
+    <span class="eyebrow">Architecture</span>
+    <h2 class="stitle">무엇으로 만들었나</h2>
+  </div>
+  <div class="body">
+    <div class="grid g4">
+      <div class="card"><span class="dot" style="background:var(--c7)"></span><span style="font-size:12px;color:var(--ink-3);font-weight:600">프론트</span><h3>바닐라 JS + Leaflet</h3><p>프레임워크 없이 단일 파일 구조. 지도는 Leaflet + CARTO 타일</p></div>
+      <div class="card"><span class="dot" style="background:var(--c5)"></span><span style="font-size:12px;color:var(--ink-3);font-weight:600">호스팅</span><h3>Cloudflare Pages</h3><p>정적 배포와 엣지 함수. 비밀번호로 보호</p></div>
+      <div class="card"><span class="dot" style="background:var(--c2)"></span><span style="font-size:12px;color:var(--ink-3);font-weight:600">수집 · 빌드</span><h3>Python</h3><p>수집 → 보강 → 분류 → places.json 생성</p></div>
+      <div class="card"><span class="dot" style="background:var(--c6)"></span><span style="font-size:12px;color:var(--ink-3);font-weight:600">AI</span><h3>Gemini</h3><p>코스 생성. 실패 시 자동으로 간이 추천으로 폴백</p></div>
+    </div>
+    <div class="card ice">
+      <h3>안전장치 — 네이버 원본을 건드리는 기능은 3중 잠금</h3>
+      <p style="margin-top:4px">① 쿠키가 없으면 아무것도 실행되지 않음 &nbsp;·&nbsp; ② 쓰기 스위치가 켜져 있어야 허용 &nbsp;·&nbsp; ③ 삭제 전 “무엇이 지워지는지” 미리보기 확인 (한 번에 최대 25곳)</p>
+    </div>
+  </div>
+</section>
+
+<!-- 16 · 마무리 -->
+<section class="slide dark" data-kick="STATUS" data-title="지금 어디까지 왔나">
+  <div class="shead">
+    <span class="eyebrow">Status</span>
+    <h2 class="stitle" style="color:#fff">지금 어디까지 왔나</h2>
+  </div>
+  <div class="body">
+    <div class="grid g2" style="flex:1">
+      <div class="panel">
+        <h3><span class="dot" style="background:var(--c5)"></span> 된 것</h3>
+        <ul class="ul">
+          <li>네이버 즐겨찾기 750곳 수집 · 분류 · 배포</li>
+          <li>테마 11종 · 지역 3단 · 검색</li>
+          <li>별점 · 방문 · 메모 · 점수 정렬과 필터</li>
+          <li>AI 코스 · 폰과 PC 반응형</li>
+          <li>실시간 갱신 · 앱에서 지우면 네이버에도 반영</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3><span class="dot" style="background:var(--gold)"></span> 남은 것</h3>
+        <ul class="ul">
+          <li>매일 자동 갱신 — GitHub Secrets 2개 등록 필요</li>
+          <li>내 기록이 기기에만 저장 — 백업 권장</li>
+          <li>네이버 메모 · 이름 수정은 범위에서 제외</li>
+          <li>앱에서 새 장소 추가는 불가 — 네이버에서 저장</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <p class="foot" style="color:#8FA3B8"><b style="color:#fff; font-weight:600">favplace-map.pages.dev</b> &nbsp;·&nbsp; 2026.09.05 기준 · 750곳</p>
+</section>
+
+</main>
+
+<nav class="nav" aria-label="슬라이드 이동">
+  <button id="prev" aria-label="이전 슬라이드">‹</button>
+  <button id="next" aria-label="다음 슬라이드">›</button>
+</nav>
+
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var stage = document.getElementById('stage');
+  var countEl = document.getElementById('count');
+  var ov = document.getElementById('overview');
+  var i = 0;
+
+  function fit(){
+    if (window.matchMedia('(max-width:900px)').matches) return;
+    var availW = stage.clientWidth - 40;
+    var availH = stage.clientHeight - 40;
+    var s = Math.min(availW / 1280, availH / 720, 1);
+    document.documentElement.style.setProperty('--s', s);
+  }
+  function show(n){
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function(s, k){ s.classList.toggle('on', k === i); });
+    countEl.textContent = (i + 1) + ' / ' + slides.length;
+    document.getElementById('prev').disabled = i === 0;
+    document.getElementById('next').disabled = i === slides.length - 1;
+    fit();
+  }
+  document.getElementById('prev').onclick = function(){ show(i - 1); };
+  document.getElementById('next').onclick = function(){ show(i + 1); };
+  document.getElementById('btn-print').onclick = function(){ window.print(); };
+
+  // 전체 보기
+  slides.forEach(function(s, k){
+    var b = document.createElement('button');
+    b.className = 'thumb';
+    b.innerHTML = '<span class="n">' + String(k + 1).padStart(2, '0') + '</span>' +
+                  '<span class="k">' + (s.dataset.kick || '') + '</span>' +
+                  '<span class="t">' + (s.dataset.title || '') + '</span>';
+    b.onclick = function(){ ov.classList.remove('on'); show(k); };
+    ov.appendChild(b);
+  });
+  document.getElementById('btn-ov').onclick = function(){ ov.classList.toggle('on'); };
+
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { show(i + 1); e.preventDefault(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { show(i - 1); e.preventDefault(); }
+    else if (e.key === 'Home') { show(0); }
+    else if (e.key === 'End') { show(slides.length - 1); }
+    else if (e.key === 'o' || e.key === 'O') { ov.classList.toggle('on'); }
+    else if (e.key === 'Escape') { ov.classList.remove('on'); }
+  });
+
+  // 스와이프
+  var x0 = null;
+  stage.addEventListener('touchstart', function(e){ x0 = e.changedTouches[0].clientX; }, {passive:true});
+  stage.addEventListener('touchend', function(e){
+    if (x0 === null) return;
+    var dx = e.changedTouches[0].clientX - x0;
+    if (Math.abs(dx) > 55) show(i + (dx < 0 ? 1 : -1));
+    x0 = null;
+  }, {passive:true});
+
+  window.addEventListener('resize', fit);
+  show(0);
+})();
+</script>
+</body>
+</html>
