@@ -37,7 +37,7 @@ async function boot() {
   } catch (e) { console.error('데이터 로드 실패', e); PLACES = []; }
   loadStore();
   initMap(); renderChips(); renderMarkers(); renderList();
-  initSheet(); initSearch(); initLocate(); initRegion(); initTheme(); initMine(); initRecommend(); initNearby(); initGuide(); initSync(); initResponsive(); autoRefreshIfStale();
+  initSheet(); initSearch(); initLocate(); initRegion(); initTheme(); initMine(); initRecommend(); initNearby(); initGuide(); initSync(); initPost(); initResponsive(); autoRefreshIfStale();
   applyScreenParam();
 }
 
@@ -597,7 +597,7 @@ function applyRegion(r) {
 
 /* ---------- 나만의 기록 (방문·메모·리스트) : 기기 저장 ---------- */
 const SKEY = 'hymap_store_v1';
-let Store = { visited: [], memo: {}, lists: [], rating: {} };
+let Store = { visited: [], memo: {}, lists: [], rating: {}, posts: [] };
 let activeMine = null;
 
 /* 큐레이션 리스트 (배포 데이터 lists.json — 하영이 준 장소 정보로 채움) */
@@ -630,7 +630,7 @@ function curatedMembers(id) {
 }
 function curatedCount(id) { return curatedMembers(id).length; }
 function loadStore() {
-  try { const s = JSON.parse(localStorage.getItem(SKEY)); if (s) Store = { visited: s.visited || [], memo: s.memo || {}, lists: s.lists || [], rating: s.rating || {} }; } catch (e) {}
+  try { const s = JSON.parse(localStorage.getItem(SKEY)); if (s) Store = { visited: s.visited || [], memo: s.memo || {}, lists: s.lists || [], rating: s.rating || {}, posts: s.posts || [] }; } catch (e) {}
 }
 function saveStore() { try { localStorage.setItem(SKEY, JSON.stringify(Store)); } catch (e) {} }
 function isVisited(id) { return Store.visited.includes(String(id)); }
@@ -770,6 +770,7 @@ function renderMine() {
   const note = document.createElement('p'); note.className = 'rg-note'; note.style.cssText = 'text-align:left;margin-top:14px;line-height:1.5';
   note.textContent = '방문·메모·리스트는 이 기기에 저장돼요. 다른 기기로 옮기려면 내보내기로 백업하고 가져오기 하세요.';
   body.appendChild(note);
+  appendPostsSection(body);
   appendSyncEntry(body);
 }
 function applyMine(m) {
@@ -815,6 +816,7 @@ function detailMineHTML(p) {
     <div class="mine-actions">
       <button class="mine-toggle${vis ? ' on' : ''}" id="m-visited">${vis ? '✓ 가봤어요' : '가봤어요'}</button>
       <button class="mine-toggle" id="m-list">☆ 리스트에 추가</button>
+      <button class="mine-toggle" id="m-post">✍ 포스팅</button>
       <button class="mine-toggle danger" id="m-del">네이버에서 삭제</button>
     </div>
     <div id="m-listpick" class="listpick" hidden></div>
@@ -862,6 +864,12 @@ function bindDetailMine(p, body) {
   if (lb) lb.onclick = () => { pick.hidden = !pick.hidden; if (!pick.hidden) renderListPick(p); };
   bindStarPicker(p, body);
   const db = $('#m-del', body); if (db) db.onclick = () => deletePlaceFromNaver(p);
+  const pb = $('#m-post', body);
+  if (pb) {
+    const mine = postsOfPlace(p.id);
+    pb.textContent = mine.length ? '✍ 포스팅 ' + mine.length : '✍ 포스팅';
+    pb.onclick = () => openPost(mine.length ? mine[0].id : null, p);
+  }
   const mm = $('#m-memo', body);
   if (mm) { let t; mm.oninput = () => { clearTimeout(t); t = setTimeout(() => setMemo(p.id, mm.value), 400); }; mm.onblur = () => setMemo(p.id, mm.value); }
 }
@@ -1151,6 +1159,276 @@ function toast(msg) {
   toast._t = setTimeout(() => t.classList.remove('on'), 3200);
 }
 
+
+
+/* ================= 내 포스팅 — 방문 장소에 대한 글 =================
+   본문은 마크다운 원문으로만 저장한다. 복사할 때도 text/plain 으로만 넣어서
+   다른 사이트에 붙여넣을 때 서식·스타일이 딸려가지 않게 한다. */
+
+function newPostId() { return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function postsAll() { return (Store.posts || []).slice().sort((a, b) => (b.updated || 0) - (a.updated || 0)); }
+function postById(id) { return (Store.posts || []).find(x => x.id === id); }
+function postsOfPlace(pid) { return (Store.posts || []).filter(x => String(x.placeId) === String(pid)); }
+function savePost(post) {
+  if (!Store.posts) Store.posts = [];
+  const i = Store.posts.findIndex(x => x.id === post.id);
+  post.updated = Date.now();
+  if (i < 0) { post.created = post.created || post.updated; Store.posts.push(post); }
+  else Store.posts[i] = post;
+  saveStore();
+}
+function deletePost(id) {
+  Store.posts = (Store.posts || []).filter(x => x.id !== id);
+  saveStore();
+}
+
+/* ---------- 마크다운 → HTML (필요한 문법만, 직접 구현) ----------
+   외부 라이브러리 없이 돌리기 위해 지원 범위를 좁혔다.
+   입력은 항상 먼저 이스케이프하므로 글에 <script> 를 적어도 태그로 실행되지 않는다. */
+function mdInline(t) {
+  return t
+    .replace(/`([^`]+)`/g, (m, a) => '<code>' + a + '</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
+    .replace(/~~([^~]+)~~/g, '<del>$1</del>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+}
+function mdToHtml(src) {
+  const lines = esc(String(src || '')).split('\n');
+  const out = [];
+  let list = null, para = [], quote = [];
+  const flushPara = () => { if (para.length) { out.push('<p>' + mdInline(para.join('<br>')) + '</p>'); para = []; } };
+  const flushList = () => { if (list) { out.push('</' + list + '>'); list = null; } };
+  const flushQuote = () => { if (quote.length) { out.push('<blockquote>' + mdInline(quote.join('<br>')) + '</blockquote>'); quote = []; } };
+  const flushAll = () => { flushPara(); flushList(); flushQuote(); };
+
+  for (const raw of lines) {
+    const line = raw.replace(/\s+$/, '');
+    if (!line.trim()) { flushAll(); continue; }
+
+    let m;
+    if ((m = line.match(/^(#{1,4})\s+(.*)$/))) {
+      flushAll(); out.push('<h' + m[1].length + '>' + mdInline(m[2]) + '</h' + m[1].length + '>'); continue;
+    }
+    if (/^(-{3,}|\*{3,})$/.test(line.trim())) { flushAll(); out.push('<hr>'); continue; }
+    // esc() 가 > 를 &gt; 로 바꾼 뒤라 두 형태를 모두 받는다
+    if ((m = line.match(/^(?:&gt;|>)\s?(.*)$/))) { flushPara(); flushList(); quote.push(m[1]); continue; }
+    if ((m = line.match(/^\s*[-*]\s+(.*)$/))) {
+      flushPara(); flushQuote();
+      if (list !== 'ul') { flushList(); out.push('<ul>'); list = 'ul'; }
+      out.push('<li>' + mdInline(m[1]) + '</li>'); continue;
+    }
+    if ((m = line.match(/^\s*\d+\.\s+(.*)$/))) {
+      flushPara(); flushQuote();
+      if (list !== 'ol') { flushList(); out.push('<ol>'); list = 'ol'; }
+      out.push('<li>' + mdInline(m[1]) + '</li>'); continue;
+    }
+    flushList(); flushQuote(); para.push(line);
+  }
+  flushAll();
+  return out.join('\n');
+}
+// 마크다운 기호를 떼어낸 순수 텍스트 (md 를 모르는 사이트에 붙일 때)
+function mdToPlain(src) {
+  return String(src || '')
+    .replace(/^#{1,4}\s+/gm, '')
+    .replace(/^\s*>\s?/gm, '')
+    .replace(/^(-{3,}|\*{3,})$/gm, '')
+    .replace(/^\s*[-*]\s+/gm, '· ')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1$2')
+    .replace(/~~([^~]+)~~/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '$1 ($2)')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/* ---------- 에디터 ---------- */
+let POST = { id: null, preview: false, fromPlace: null };
+
+function initPost() {
+  const cl = $('#post-close'); if (cl) cl.onclick = closePost;
+}
+function openPost(id, place) {
+  POST.id = id; POST.preview = false; POST.fromPlace = place || null;
+  let post = id ? postById(id) : null;
+  if (!post) {
+    post = { id: newPostId(), placeId: place ? String(place.id) : '', placeName: place ? place.n : '',
+             title: '', body: '', created: Date.now(), updated: Date.now() };
+    POST.id = post.id;
+    POST.isNew = true;
+  } else POST.isNew = false;
+  $('#post').hidden = false;
+  renderPost(post);
+}
+function closePost() {
+  const post = postById(POST.id);
+  // 제목·본문이 모두 비어 있으면 저장하지 않고 버린다
+  if (post && !post.title.trim() && !post.body.trim()) deletePost(post.id);
+  $('#post').hidden = true;
+  POST.id = null;
+  if (POST.fromPlace) { const pl = POST.fromPlace; POST.fromPlace = null; openDetail(pl); }
+  else { renderMine(); }
+}
+function currentPost() {
+  return postById(POST.id) || { id: POST.id, placeId: '', placeName: '', title: '', body: '' };
+}
+function stashPost() {
+  const t = $('#post-title'), b = $('#post-body');
+  if (!t || !b) return;
+  const post = currentPost();
+  post.title = t.value; post.body = b.value;
+  savePost(post);
+}
+
+function renderPost(post) {
+  const el = $('#post-body-wrap');
+  const where = post.placeName ? `<span class="post-place">📍 ${esc(post.placeName)}</span>` : '';
+  el.innerHTML =
+    `<input id="post-title" class="post-title" placeholder="제목" value="${esc(post.title || '')}" />
+     ${where}
+     <div class="md-bar" id="md-bar">
+       <button data-md="h1" title="제목 1">H1</button>
+       <button data-md="h2" title="제목 2">H2</button>
+       <button data-md="b" title="굵게"><b>B</b></button>
+       <button data-md="i" title="기울임"><i>I</i></button>
+       <button data-md="s" title="취소선"><s>S</s></button>
+       <button data-md="ul" title="목록">• 목록</button>
+       <button data-md="ol" title="번호 목록">1. 번호</button>
+       <button data-md="quote" title="인용">❝ 인용</button>
+       <button data-md="link" title="링크">🔗 링크</button>
+       <button data-md="hr" title="구분선">— 구분</button>
+       <button id="md-prev" class="md-prev${POST.preview ? ' on' : ''}">${POST.preview ? '편집' : '미리보기'}</button>
+     </div>
+     <textarea id="post-body" class="post-body" placeholder="이곳에서 뭘 먹었고 어땠는지 적어보세요.&#10;&#10;**굵게** · *기울임* · # 제목 · - 목록 처럼 마크다운으로 쓸 수 있어요."${POST.preview ? ' hidden' : ''}>${esc(post.body || '')}</textarea>
+     <div id="post-preview" class="md-view"${POST.preview ? '' : ' hidden'}>${POST.preview ? mdToHtml(post.body) : ''}</div>
+     <div class="post-foot">
+       <button class="act" id="post-copy-md">마크다운 복사</button>
+       <button class="act" id="post-copy-txt">일반 텍스트 복사</button>
+       <button class="act danger" id="post-del">삭제</button>
+     </div>
+     <p class="rg-hint" style="margin-top:10px">복사는 항상 <b>서식 없는 글자</b>로만 들어갑니다. 다른 사이트에 붙여넣어도 폰트·색이 딸려가지 않아요.</p>`;
+
+  const t = $('#post-title'), b = $('#post-body');
+  let timer = null;
+  const onEdit = () => { clearTimeout(timer); timer = setTimeout(stashPost, 400); };
+  t.oninput = onEdit; b.oninput = onEdit;
+  t.onblur = stashPost; b.onblur = stashPost;
+
+  $$('#md-bar button[data-md]').forEach(btn => {
+    btn.onclick = () => { applyMd(btn.dataset.md); };
+  });
+  $('#md-prev').onclick = () => {
+    stashPost(); POST.preview = !POST.preview; renderPost(currentPost());
+  };
+  $('#post-copy-md').onclick = () => copyPlain(buildMarkdown(currentPost()), '마크다운으로 복사했어요');
+  $('#post-copy-txt').onclick = () => copyPlain(mdToPlain(buildMarkdown(currentPost())), '일반 텍스트로 복사했어요');
+  $('#post-del').onclick = () => {
+    if (!window.confirm('이 글을 삭제합니다. 되돌릴 수 없습니다.')) return;
+    deletePost(POST.id); POST.id = null;
+    $('#post').hidden = true;
+    if (POST.fromPlace) { const pl = POST.fromPlace; POST.fromPlace = null; openDetail(pl); } else renderMine();
+    toast('글을 삭제했어요');
+  };
+}
+
+function buildMarkdown(post) {
+  const head = post.title ? '# ' + post.title + '\n\n' : '';
+  const place = post.placeName ? '📍 ' + post.placeName + '\n\n' : '';
+  return (head + place + (post.body || '')).trim();
+}
+
+// 클립보드에는 text/plain 만 넣는다 — HTML 을 같이 넣으면 붙여넣는 쪽에서 서식이 변환된다
+function copyPlain(text, okMsg) {
+  const done = () => toast(okMsg);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+  } else fallbackCopy(text, done);
+}
+function fallbackCopy(text, done) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.setAttribute('readonly', '');
+  ta.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch (e) { toast('복사에 실패했어요'); }
+  ta.remove();
+}
+
+/* 툴바 — 선택 영역에 마크다운 기호를 두른다 */
+function applyMd(kind) {
+  const b = $('#post-body'); if (!b) return;
+  const s = b.selectionStart, e = b.selectionEnd;
+  const sel = b.value.slice(s, e);
+  const lineStart = b.value.lastIndexOf('\n', s - 1) + 1;
+  const wrap = (mark, ph) => {
+    const body = sel || ph;
+    b.setRangeText(mark + body + mark, s, e, 'end');
+    if (!sel) b.setSelectionRange(s + mark.length, s + mark.length + body.length);
+  };
+  const prefix = (mark) => {
+    const end = sel ? e : b.value.indexOf('\n', s) < 0 ? b.value.length : b.value.indexOf('\n', s);
+    const block = b.value.slice(lineStart, end);
+    const marked = block.split('\n').map((ln, i) => {
+      const clean = ln.replace(/^(#{1,4}\s+|[-*]\s+|\d+\.\s+|>\s?)/, '');
+      return (kind === 'ol' ? (i + 1) + '. ' : mark) + clean;
+    }).join('\n');
+    b.setRangeText(marked, lineStart, end, 'end');
+  };
+  if (kind === 'b') wrap('**', '굵은 글씨');
+  else if (kind === 'i') wrap('*', '기울인 글씨');
+  else if (kind === 's') wrap('~~', '취소선');
+  else if (kind === 'h1') prefix('# ');
+  else if (kind === 'h2') prefix('## ');
+  else if (kind === 'ul') prefix('- ');
+  else if (kind === 'ol') prefix('1. ');
+  else if (kind === 'quote') prefix('> ');
+  else if (kind === 'hr') { b.setRangeText('\n\n---\n\n', e, e, 'end'); }
+  else if (kind === 'link') {
+    const text = sel || '링크 이름';
+    b.setRangeText('[' + text + '](https://)', s, e, 'end');
+  }
+  b.focus();
+  stashPost();
+}
+
+/* ---------- 내 기록 화면의 포스팅 목록 ---------- */
+function appendPostsSection(body) {
+  const t = document.createElement('div');
+  t.className = 'sec-title'; t.style.margin = '22px 4px 8px';
+  t.textContent = '내 포스팅';
+  body.appendChild(t);
+
+  const nb = document.createElement('button');
+  nb.className = 'act'; nb.textContent = '＋ 새 글 쓰기';
+  nb.onclick = () => { $('#mine').hidden = true; openPost(null, null); };
+  body.appendChild(nb);
+
+  const all = postsAll();
+  if (!all.length) {
+    const h = document.createElement('p');
+    h.className = 'rg-hint'; h.style.marginTop = '8px';
+    h.textContent = '아직 쓴 글이 없어요. 장소 상세에서 ‘포스팅’을 눌러도 그 장소에 대한 글을 쓸 수 있습니다.';
+    body.appendChild(h);
+    return;
+  }
+  const box = document.createElement('div');
+  box.className = 'post-list'; box.style.marginTop = '10px';
+  all.forEach(pt => {
+    const row = document.createElement('button');
+    row.className = 'post-row';
+    const d = new Date(pt.updated || pt.created);
+    const when = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+    const excerpt = mdToPlain(pt.body).replace(/\n+/g, ' ').slice(0, 46);
+    row.innerHTML =
+      `<span class="pr-title">${esc(pt.title || '(제목 없음)')}</span>
+       <span class="pr-meta">${pt.placeName ? '📍 ' + esc(pt.placeName) + ' · ' : ''}${when}</span>
+       ${excerpt ? `<span class="pr-ex">${esc(excerpt)}</span>` : ''}`;
+    row.onclick = () => { $('#mine').hidden = true; openPost(pt.id, null); };
+    box.appendChild(row);
+  });
+  body.appendChild(box);
+}
 
 /* ================= 네이버 원본 실시간 반영 =================
    스냅샷(이름·좌표·카테고리)만으로 지도를 즉시 갱신한다.

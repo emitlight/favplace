@@ -15,6 +15,9 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    # step 의 if: 에서는 secrets 컨텍스트를 쓸 수 없다. job env 로 올려두고 env 로 검사한다.
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -34,7 +37,7 @@ jobs:
 
       # CLOUDFLARE_API_TOKEN 시크릿이 있을 때만 배포. 없으면 데이터 커밋까지만 하고 끝난다.
       - name: Cloudflare Pages 배포
-        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+        if: env.CF_TOKEN != ''
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: 7f53aeca9212909eb3f3f0d62b814c20

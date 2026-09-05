@@ -700,3 +700,64 @@ body[data-snap="peek"] .mapbtn.refresh{bottom:calc(var(--safe-bottom) + 256px)}
 .mapbtn.refresh.busy{opacity:.5;pointer-events:none}
 .mapbtn.refresh.busy .ic{animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ============== 내 포스팅 ============== */
+.post-wrap{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:16px 16px calc(28px + var(--safe-bottom));display:flex;flex-direction:column;gap:10px}
+.post-title{width:100%;border:none;background:none;color:var(--ink);
+  font:700 24px Pretendard;letter-spacing:-.02em;outline:none;padding:4px 2px}
+.post-title::placeholder{color:var(--ink-3)}
+.post-place{font:600 12.5px Pretendard;color:var(--brand-ink);
+  background:var(--brand-soft);padding:5px 11px;border-radius:999px;align-self:flex-start}
+
+/* 마크다운 툴바 */
+.md-bar{display:flex;flex-wrap:wrap;gap:5px;padding:8px;border-radius:var(--r);
+  background:var(--surface-2);position:sticky;top:0;z-index:2}
+.md-bar button{min-width:38px;height:34px;padding:0 10px;border-radius:9px;
+  background:var(--surface);color:var(--ink-2);font:600 12.5px Pretendard;
+  border:1px solid var(--line-2);transition:transform .1s,background .15s}
+.md-bar button:active{transform:scale(.94)}
+.md-bar button b,.md-bar button i,.md-bar button s{font-size:14px;color:var(--ink)}
+.md-prev{margin-left:auto;color:var(--brand-ink)!important;border-color:var(--brand)!important}
+.md-prev.on{background:var(--brand)!important;color:#fff!important}
+
+.post-body{width:100%;min-height:46vh;border:1px solid var(--line-2);border-radius:var(--r);
+  background:var(--surface);color:var(--ink);font:400 15px/1.75 Pretendard;
+  padding:14px;outline:none;resize:vertical}
+.post-body:focus{border-color:var(--brand)}
+.post-body::placeholder{color:var(--ink-3);line-height:1.7}
+
+/* 미리보기 */
+.md-view{min-height:46vh;border:1px solid var(--line-2);border-radius:var(--r);
+  background:var(--surface);padding:16px 18px;font:400 15px/1.75 Pretendard;color:var(--ink);
+  overflow-x:auto}
+.md-view h1{font-size:25px;font-weight:700;letter-spacing:-.02em;margin:.4em 0 .35em}
+.md-view h2{font-size:20px;font-weight:700;letter-spacing:-.02em;margin:1em 0 .35em}
+.md-view h3{font-size:17px;font-weight:700;margin:1em 0 .3em}
+.md-view h4{font-size:15px;font-weight:700;margin:1em 0 .3em;color:var(--ink-2)}
+.md-view p{margin:0 0 .9em}
+.md-view ul,.md-view ol{margin:0 0 .9em;padding-left:1.3em}
+.md-view li{margin-bottom:.3em}
+.md-view blockquote{margin:0 0 .9em;padding:2px 0 2px 14px;
+  border-left:3px solid var(--brand);color:var(--ink-2)}
+.md-view code{font:600 13px ui-monospace,Menlo,monospace;
+  background:var(--surface-2);padding:2px 6px;border-radius:6px}
+.md-view a{color:var(--brand-ink);text-decoration:underline}
+.md-view hr{border:none;border-top:1px solid var(--line-2);margin:1.3em 0}
+.md-view strong{font-weight:700}
+.md-view del{color:var(--ink-3)}
+
+.post-foot{display:flex;gap:8px;margin-top:4px}
+.post-foot .act{flex:1;height:46px;font-size:13.5px}
+.post-foot .act.danger{flex:0 0 84px;color:#C0433A}
+
+/* 내 기록의 포스팅 목록 */
+.post-list{display:flex;flex-direction:column;gap:8px}
+.post-row{display:flex;flex-direction:column;gap:3px;text-align:left;
+  padding:13px 15px;border-radius:var(--r);background:var(--surface);
+  box-shadow:var(--shadow);transition:transform .12s}
+.post-row:active{transform:scale(.99)}
+.pr-title{font:700 15px Pretendard;color:var(--ink);letter-spacing:-.01em}
+.pr-meta{font:500 11.5px Pretendard;color:var(--ink-3)}
+.pr-ex{font:400 12.5px Pretendard;color:var(--ink-2);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
